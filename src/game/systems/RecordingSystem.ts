@@ -2,17 +2,24 @@ import { EchoSample } from '../../types';
 import { gameEvents, EVENTS } from '../events/GameEventBus';
 import { sound } from '../../services/audio/AudioService';
 
+export type EchoRecorderState = 'IDLE' | 'RECORDING' | 'RECORDED' | 'REPLAYING' | 'COMPLETED' | 'CANCELLED';
+
 export class RecordingSystem {
-  private isRecording: boolean = false;
+  private state: EchoRecorderState = 'IDLE';
   private startTime: number = 0;
   private maxDurationMs: number = 10000;
   private recordedSamples: EchoSample[] = [];
   private lastSampleTime: number = 0;
   private readonly SAMPLE_INTERVAL_MS = 16.66; // 60hz sampling rate
 
+  public getState(): EchoRecorderState {
+    return this.state;
+  }
+
   public startRecording(maxDurationSeconds: number): boolean {
-    if (this.isRecording) return false;
-    this.isRecording = true;
+    if (this.state === 'RECORDING') return false;
+
+    this.state = 'RECORDING';
     this.startTime = performance.now();
     this.maxDurationMs = maxDurationSeconds * 1000;
     this.recordedSamples = [];
@@ -24,10 +31,20 @@ export class RecordingSystem {
   }
 
   public stopRecording(): EchoSample[] {
-    if (!this.isRecording) return [];
-    this.isRecording = false;
+    if (this.state !== 'RECORDING') return [];
+
+    this.state = this.recordedSamples.length > 0 ? 'RECORDED' : 'IDLE';
     gameEvents.emit(EVENTS.RECORDING_STOPPED, { sampleCount: this.recordedSamples.length });
     return [...this.recordedSamples];
+  }
+
+  public cancelRecording(): void {
+    if (this.state === 'RECORDING') {
+      this.state = 'CANCELLED';
+      this.recordedSamples = [];
+      gameEvents.emit(EVENTS.RECORDING_STOPPED, { sampleCount: 0 });
+      this.state = 'IDLE';
+    }
   }
 
   public recordFrame(
@@ -40,7 +57,7 @@ export class RecordingSystem {
     animState: 'idle' | 'run' | 'jump' | 'fall',
     isInteracting: boolean
   ): boolean {
-    if (!this.isRecording) return false;
+    if (this.state !== 'RECORDING') return false;
 
     const elapsed = currentTime - this.startTime;
 
@@ -76,11 +93,17 @@ export class RecordingSystem {
   }
 
   public getIsRecording(): boolean {
-    return this.isRecording;
+    return this.state === 'RECORDING';
   }
 
   public getSampleCount(): number {
     return this.recordedSamples.length;
   }
-}
 
+  public reset(): void {
+    this.state = 'IDLE';
+    this.recordedSamples = [];
+    this.startTime = 0;
+    this.lastSampleTime = 0;
+  }
+}

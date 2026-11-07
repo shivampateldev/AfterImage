@@ -1,101 +1,88 @@
-# ARCHITECTURE SPECIFICATION – AFTERIMAGE: THE LAST ECHO
+# ARCHITECTURE & SUBSYSTEM COUPLING
+**Project:** AFTERIMAGE – THE LAST ECHO | AN SMP ORIGINAL ("1% CHANCE. 99% FAITH.")  
+**Date:** 2026-11-07  
 
-## 1. System Architecture Overview
+---
+
+## 1. System Dependency Flow
 
 ```mermaid
-graph TD
-    subgraph Presentation ["Presentation & UI Layer (React 18 + Tailwind + Framer Motion)"]
-        UI_App[App.tsx]
-        UI_Menu[MainMenu.tsx]
-        UI_HUD[GameplayHUD.tsx]
-        UI_Modal[LevelCompletionModal.tsx]
-        UI_Hub[LearningHub.tsx]
-        UI_Ach[AchievementsModal.tsx]
-        UI_Stats[StatisticsModal.tsx]
+flowchart TD
+    subgraph UI ["React Application & UI Layer"]
+        A[App.tsx] --> B[GameView.tsx]
+        B --> C[Game25DCanvas.tsx]
+        B --> D[GameHud.tsx]
+        B --> E[LevelCompletionModal.tsx]
+        B --> F[LearningHub.tsx]
     end
 
-    subgraph Bridge ["Event Communication Bridge"]
-        EventBus[GameEventBus.ts]
+    subgraph Core ["Engine & Scene Graph Hierarchy"]
+        C -->|Instantiates & Mounts| G[Three25DScene.ts]
+        G --> H1[BackgroundGroup: Z=-16 to -12]
+        G --> H2[ArchitectureGroup: Z=-7 to -4]
+        G --> H3[GameplayGroup: Z=0]
+        G --> H4[InteractiveGroup: Z=0]
+        G --> H5[CharacterGroup: Z=0]
+        G --> H6[EffectsGroup: Z=0 to +1]
+        G --> H7[DebugGroup: Wireframes]
     end
 
-    subgraph Simulation ["Simulation & Gameplay Core (Phaser 3 Arcade)"]
-        Game_Canvas[GameCanvas.tsx]
-        Game_Core[PhaserGame.ts]
-        Game_Scene[MainGameScene.ts]
-        Game_Player[PlayerController.ts]
-        Sys_Record[RecordingSystem.ts]
-        Sys_Echo[EchoSystem.ts]
-        Sys_Puzzle[PuzzleSystem.ts]
-        Gen_Asset[AssetGenerator.ts]
+    subgraph Assets ["Asset & Model Pipeline"]
+        G --> I[ModelAssetPipeline.ts]
+        I -->|Binary GLB| J1[player_explorer.glb]
+        I -->|Binary GLB| J2[tree_ancient.glb]
+        I -->|Binary GLB| J3[door_bulkhead.glb]
+        I -->|Binary GLB| J4[terminal_console.glb]
+        G --> K[SciFiAssetFactory.ts]
+        G --> L[NatureAssetFactory.ts]
+        K --> M[TextureGenerator.ts]
+        L --> M
     end
 
-    subgraph Services ["Services & Persistence Layer"]
-        Svc_Prog[ProgressionService.ts]
-        Svc_Store[StorageService.ts]
-        Svc_Audio[AudioService.ts]
+    subgraph Phys ["Authoritative Physics & Dynamics"]
+        G --> N[RapierPhysicsWorld.ts]
+        N -->|WebAssembly| O[@dimforge/rapier3d-compat]
+        N -->|Sub-stepped Delta 60Hz| P[Accumulator & CCD]
+        N -->|Planar 2.5D Lock| Q[Constraint: Z=0, linvel.z=0]
     end
 
-    subgraph Data ["Declarative Game Data"]
-        Data_Levels[levels.ts - 9 Campaign Sectors]
-        Data_Questions[questions.ts - 52 Coding Challenges]
-        Data_Ach[achievements.ts - 10 Achievements]
+    subgraph EchoSys ["Temporal Echo & Input Subsystems"]
+        G --> R[RecordingSystem.ts]
+        R -->|State Machine| S[IDLE -> RECORDING -> RECORDED -> REPLAYING]
+        R -->|60Hz Timestamped Samples| T[EchoSample Array]
+        G -->|Interaction Dispatcher| U[Switches, Plates, Bulkhead Doors]
+        G --> V[AudioService.ts: Web Audio Procedural Synthesis]
+        G --> W[GameEventBus.ts]
+        W -.->|State & Events| UI
     end
-
-    UI_App --> UI_Menu
-    UI_App --> UI_HUD
-    UI_App --> UI_Modal
-    UI_App --> Game_Canvas
-
-    Game_Canvas --> Game_Core
-    Game_Core --> Game_Scene
-
-    Game_Scene --> Game_Player
-    Game_Scene --> Sys_Record
-    Game_Scene --> Sys_Echo
-    Game_Scene --> Sys_Puzzle
-    Game_Scene --> Gen_Asset
-
-    Game_Scene <--> EventBus
-    UI_HUD <--> EventBus
-    UI_Modal <--> EventBus
-
-    Game_Scene --> Data_Levels
-    UI_Modal --> Data_Questions
-    UI_Hub --> Data_Questions
-
-    Sys_Echo --> Svc_Prog
-    UI_Modal --> Svc_Prog
-    UI_Hub --> Svc_Prog
-    Svc_Prog --> Svc_Store
-    Svc_Prog --> Data_Ach
-    Game_Player --> Svc_Audio
-    Sys_Puzzle --> Svc_Audio
 ```
 
 ---
 
-## 2. Core Design Decisions
+## 2. Subsystem Ownership & Responsibilities
 
-1. **Separation of Concerns: Phaser vs React**:
-   - Phaser 3 owns the canvas rendering, 60 FPS update loop, world collisions, kinematics, and particle systems.
-   - React owns high-level UI states: menus, tactical advisory hints, HUD overlays, code challenge evaluation modals, and analytics charts.
-   - Decoupled via `GameEventBus`, ensuring zero unnecessary React re-renders during 60 FPS gameplay.
+1. **`Game25DCanvas.tsx`**:
+   - Manages the WebGL DOM container and the React component lifecycle.
+   - Enforces React Strict Mode mount/unmount safety via explicit cancellation token (`isCancelled`) and async teardown.
+   - Connects `GameEventBus` signals (`TRIGGER_RECORD`, `TRIGGER_REPLAY`, `SET_CURRENT_LEVEL`) directly to `Three25DScene`.
 
-2. **Deterministic Echo Recording (Kinematic Timeline Sampling)**:
-   - Rather than relying on non-deterministic physics replay or AI agents, `RecordingSystem` samples player coordinate transforms, velocities, and interaction flags at a fixed 60Hz rate into compact arrays.
-   - `EchoSystem` replays these tracks using binary-search timeline sampling and linear interpolation. This guarantees reproducible, glitch-free puzzle solutions across runs.
+2. **`Three25DScene.ts`**:
+   - Core 2.5D orchestrator. Owns Three.js rendering, lighting, camera interpolation, input polling, and puzzle logic.
+   - Enforces the 7 semantic scene graph layers (`backgroundGroup`, `architectureGroup`, `gameplayGroup`, `interactiveGroup`, `characterGroup`, `effectsGroup`, `debugGroup`).
+   - Dispatches player and echo interactions (`KeyF` / `Enter` / recorded `isInteracting`) to puzzle elements.
 
-3. **Sensor-Based Puzzle Triggering**:
-   - Echoes do not require physical collision bodies that could push walls or glitch through solid geometry.
-   - Instead, echoes interact through dedicated Phaser trigger sensor zones in `PuzzleSystem.ts`.
+3. **`RapierPhysicsWorld.ts`**:
+   - The authoritative physics simulation.
+   - Prevents player jitter and tunneling via 60Hz sub-stepping accumulator and Continuous Collision Detection (CCD).
+   - Constrains all dynamic motion to $Z = 0.0$.
+   - Provides raycast ground detection with $0.85\text{m}$ reach for stable jumping and coyote time.
+   - Provides collider geometry metadata for runtime physics debugging (`F1` / `~`).
 
-4. **Educational Integrity ("Learn to Earn")**:
-   - No forced advertising, energy timers, or paywalls.
-   - Players earn bonus XP by solving output prediction and algorithm challenges across Python, JavaScript, C, C++, and Java.
-   - Safe client evaluation: evaluated against canonical answer indices without using unsafe `eval()`.
-   - Anti-farming protection: records solved challenge IDs to reward XP only once per question.
+4. **`RecordingSystem.ts`**:
+   - Deterministic temporal memory recording.
+   - Operates a formal 6-state machine: `IDLE`, `RECORDING`, `RECORDED`, `REPLAYING`, `COMPLETED`, `CANCELLED`.
+   - Records player coordinates, velocity, facing direction, jump/run state, and environmental interaction events at 60Hz.
 
-5. **Robust Audio via Web Audio API**:
-   - Procedural futuristic audio synthesis using `AudioContext` oscillators, envelopes, and gain nodes.
-   - Zero external audio file download dependencies, zero latency, and zero broken asset paths.
-
+5. **`ModelAssetPipeline.ts` & Asset Factories**:
+   - Asynchronously loads binary GLB 3D assets with internal memory caching.
+   - Fallbacks to procedural PBR assets (`SciFiAssetFactory`, `NatureAssetFactory`, `TextureGenerator`) if network/local GLB loading fails.

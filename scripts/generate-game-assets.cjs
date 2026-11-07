@@ -23,7 +23,7 @@ function exportToGLB(object, outputPath) {
     (gltf) => {
       fs.mkdirSync(path.dirname(outputPath), { recursive: true });
       fs.writeFileSync(outputPath, Buffer.from(gltf));
-      console.log(`Successfully generated binary GLB: ${path.relative(projectRoot, outputPath)} (${gltf.byteLength} bytes)`);
+      console.log(`Generated binary GLB: ${path.relative(projectRoot, outputPath)} (${gltf.byteLength} bytes)`);
     },
     (error) => {
       console.error(`Export error for ${outputPath}:`, error);
@@ -38,7 +38,7 @@ function generatePlayerModel() {
   root.name = 'Explorer_Character';
 
   const suitMat = new THREE.MeshStandardMaterial({
-    color: 0x2b384a,
+    color: 0x334458,
     roughness: 0.65,
     metalness: 0.25,
     name: 'Suit_Fabric'
@@ -57,7 +57,7 @@ function generatePlayerModel() {
     name: 'Visor_Glow'
   });
   const metalDark = new THREE.MeshStandardMaterial({
-    color: 0x151a22,
+    color: 0x222a36,
     roughness: 0.5,
     metalness: 0.9,
     name: 'Dark_Alloy'
@@ -145,40 +145,55 @@ function generatePlayerModel() {
   exportToGLB(root, path.join(projectRoot, 'public/assets/characters/player_explorer.glb'));
 }
 
-// 2. GENERATE NATURAL ENVIRONMENT 3D MODELS
+// 2. GENERATE NATURAL ENVIRONMENT 3D MODELS (ORGANIC TREES & FOLIAGE)
 function generateNatureModels() {
-  // Ancient Tree GLB
   const treeRoot = new THREE.Group();
   treeRoot.name = 'Ancient_Tree_Reclaimed';
-  const barkMat = new THREE.MeshStandardMaterial({ color: 0x3d322a, roughness: 0.9, metalness: 0.05 });
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2e4a2d, roughness: 0.65, side: THREE.DoubleSide });
+  const barkMat = new THREE.MeshStandardMaterial({ color: 0x42382e, roughness: 0.85, metalness: 0.05 });
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x3d6335, roughness: 0.7, side: THREE.DoubleSide });
 
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.85, 12, 10), barkMat);
-  trunk.position.y = 6;
+  // Natural tapered trunk
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.65, 11, 10), barkMat);
+  trunk.position.y = 5.5;
   treeRoot.add(trunk);
 
+  // Root buttresses
   for (let i = 0; i < 4; i++) {
     const angle = (i * Math.PI) / 2 + 0.3;
-    const root = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.35, 3.5, 6), barkMat);
-    root.position.set(Math.cos(angle) * 0.8, 1.2, Math.sin(angle) * 0.8);
+    const root = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.25, 2.5, 6), barkMat);
+    root.position.set(Math.cos(angle) * 0.6, 0.8, Math.sin(angle) * 0.6);
     root.rotation.z = Math.cos(angle) * 0.45;
     root.rotation.x = Math.sin(angle) * 0.45;
     treeRoot.add(root);
   }
 
-  const fol1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.8, 1), leafMat);
-  fol1.position.set(-1.2, 8.5, 0.4);
-  const fol2 = new THREE.Mesh(new THREE.DodecahedronGeometry(3.4, 1), leafMat);
-  fol2.position.set(1.4, 10.5, -0.5);
-  const fol3 = new THREE.Mesh(new THREE.DodecahedronGeometry(4.0, 1), leafMat);
-  fol3.position.set(0, 12.5, 0);
-  treeRoot.add(fol1, fol2, fol3);
+  // Branch limbs and layered foliage clusters
+  const branches = [
+    { y: 6.0, rotZ: 0.55, rotY: 0.2, length: 2.8, folScale: 1.6 },
+    { y: 7.5, rotZ: -0.5, rotY: 1.2, length: 3.2, folScale: 1.9 },
+    { y: 8.8, rotZ: 0.4, rotY: -0.8, length: 2.4, folScale: 1.7 },
+    { y: 10.0, rotZ: -0.25, rotY: 0.6, length: 2.0, folScale: 1.5 },
+    { y: 10.8, rotZ: 0.1, rotY: 2.0, length: 1.8, folScale: 2.2 },
+  ];
+
+  branches.forEach(b => {
+    const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, b.length, 6), barkMat);
+    limb.position.set(0, b.y, 0);
+    limb.rotation.z = b.rotZ;
+    limb.rotation.y = b.rotY;
+    treeRoot.add(limb);
+
+    const tip = new THREE.Vector3(0, b.length / 2, 0).applyEuler(limb.rotation);
+    const cluster = new THREE.Mesh(new THREE.IcosahedronGeometry(b.folScale, 1), leafMat);
+    cluster.position.set(tip.x, b.y + tip.y, tip.z);
+    treeRoot.add(cluster);
+  });
 
   exportToGLB(treeRoot, path.join(projectRoot, 'public/assets/nature/tree_ancient.glb'));
 
   // Mossy Boulder GLB
-  const rockGeom = new THREE.DodecahedronGeometry(1.2, 1);
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0x323a44, roughness: 0.85, metalness: 0.15 });
+  const rockGeom = new THREE.IcosahedronGeometry(1.0, 1);
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x48525e, roughness: 0.8, metalness: 0.15 });
   const rock = new THREE.Mesh(rockGeom, rockMat);
   rock.name = 'Mossy_Boulder';
   exportToGLB(rock, path.join(projectRoot, 'public/assets/nature/boulder_mossy.glb'));
@@ -186,12 +201,12 @@ function generateNatureModels() {
   // Fern Cluster GLB
   const fernRoot = new THREE.Group();
   fernRoot.name = 'Fern_Cluster';
-  for (let i = 0; i < 8; i++) {
-    const angle = (i * Math.PI * 2) / 8;
-    const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.1), leafMat);
-    frond.position.set(Math.cos(angle) * 0.3, 0.4, Math.sin(angle) * 0.3);
+  for (let i = 0; i < 6; i++) {
+    const angle = (i * Math.PI * 2) / 6;
+    const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.8), leafMat);
+    frond.position.set(Math.cos(angle) * 0.25, 0.35, Math.sin(angle) * 0.25);
     frond.rotation.y = angle;
-    frond.rotation.x = Math.PI / 4;
+    frond.rotation.x = Math.PI / 4.5;
     fernRoot.add(frond);
   }
   exportToGLB(fernRoot, path.join(projectRoot, 'public/assets/nature/fern_cluster.glb'));
@@ -199,9 +214,9 @@ function generateNatureModels() {
 
 // 3. GENERATE RESEARCH MACHINERY & ARCHITECTURE
 function generateMachineryModels() {
-  const steelMat = new THREE.MeshStandardMaterial({ color: 0x3a4556, roughness: 0.45, metalness: 0.8 });
-  const darkAlloy = new THREE.MeshStandardMaterial({ color: 0x161e2a, roughness: 0.55, metalness: 0.9 });
-  const cyanEmissive = new THREE.MeshStandardMaterial({ color: 0x38d9ff, emissive: 0x38d9ff, emissiveIntensity: 1.0 });
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.45, metalness: 0.8 });
+  const darkAlloy = new THREE.MeshStandardMaterial({ color: 0x222a36, roughness: 0.55, metalness: 0.9 });
+  const cyanEmissive = new THREE.MeshStandardMaterial({ color: 0x2cd5f5, emissive: 0x2cd5f5, emissiveIntensity: 1.0 });
 
   // Mechanical Door GLB
   const doorRoot = new THREE.Group();

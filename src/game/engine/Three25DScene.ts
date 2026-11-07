@@ -51,12 +51,23 @@ export class Three25DScene {
   private scene: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
 
-  // Physics World
+  // Semantic Scene Graph Layers (Phases 2 & 10)
+  private backgroundGroup: THREE.Group = new THREE.Group();
+  private architectureGroup: THREE.Group = new THREE.Group();
+  private gameplayGroup: THREE.Group = new THREE.Group();
+  private interactiveGroup: THREE.Group = new THREE.Group();
+  private characterGroup: THREE.Group = new THREE.Group();
+  private foregroundGroup: THREE.Group = new THREE.Group();
+  private effectsGroup: THREE.Group = new THREE.Group();
+  private debugGroup: THREE.Group = new THREE.Group();
+
+  // Physics World (Rapier 3D WebAssembly)
   private physics: RapierPhysicsWorld | null = null;
   private playerBody: RAPIER.RigidBody | null = null;
+  private debugPhysicsEnabled: boolean = false;
 
-  // 3D Player Meshes & Animation Hierarchy
-  private playerGroup: THREE.Group | null = null;
+  // 3D Player Meshes & Articulation
+  private playerMeshGroup: THREE.Group | null = null;
   private playerLeftLeg: THREE.Object3D | null = null;
   private playerRightLeg: THREE.Object3D | null = null;
   private playerLeftArm: THREE.Object3D | null = null;
@@ -80,7 +91,7 @@ export class Three25DScene {
   private storedTracks: EchoSample[][] = [];
 
   // Puzzles & Geometry
-  private platformMeshes: THREE.Group[] = [];
+  private platformMeshes: THREE.Object3D[] = [];
   private hazardBoxes: THREE.Box3[] = [];
   private exitPortalGroup: THREE.Group | null = null;
   private exitBox: THREE.Box3 = new THREE.Box3();
@@ -149,12 +160,14 @@ export class Three25DScene {
     const height = this.container.clientHeight || 600;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0c131e);
-    this.scene.fog = new THREE.FogExp2(0x0c131e, 0.015);
 
-    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 120);
-    this.camera.position.set(0, 5, 26);
-    this.camera.lookAt(0, 4, 0);
+    // Balanced natural atmosphere
+    this.scene.background = new THREE.Color(0x16202c);
+    this.scene.fog = new THREE.Fog(0x16202c, 24, 65);
+
+    this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
+    this.camera.position.set(0, 4.5, 24);
+    this.camera.lookAt(0, 3.5, 0);
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -165,32 +178,47 @@ export class Three25DScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.25;
+    this.renderer.toneMappingExposure = 1.35;
     this.container.appendChild(this.renderer.domElement);
 
-    // Three-point cinematic lighting
-    const ambientLight = new THREE.AmbientLight(0x233148, 1.4);
-    this.scene.add(ambientLight);
+    // Setup Scene Graph Groups
+    this.scene.add(this.backgroundGroup);
+    this.scene.add(this.architectureGroup);
+    this.scene.add(this.gameplayGroup);
+    this.scene.add(this.interactiveGroup);
+    this.scene.add(this.characterGroup);
+    this.scene.add(this.foregroundGroup);
+    this.scene.add(this.effectsGroup);
+    this.scene.add(this.debugGroup);
 
-    const dirLight = new THREE.DirectionalLight(0x38d9ff, 1.7);
-    dirLight.position.set(12, 24, 18);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.camera.near = 0.5;
-    dirLight.shadow.camera.far = 60;
-    dirLight.shadow.camera.left = -25;
-    dirLight.shadow.camera.right = 25;
-    dirLight.shadow.camera.top = 20;
-    dirLight.shadow.camera.bottom = -15;
-    this.scene.add(dirLight);
+    // Realistic Balanced Lighting Pipeline (Phase 6)
+    // 1. Natural Ambient/Hemisphere Sky & Ground Fill
+    const hemiLight = new THREE.HemisphereLight(0x7ea8c8, 0x3a3028, 1.25);
+    this.scene.add(hemiLight);
 
-    const rimLight = new THREE.DirectionalLight(0xd4a52c, 1.1);
-    rimLight.position.set(-18, 12, -12);
+    // 2. Key Warm Sunlight Directional Light
+    const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.85);
+    sunLight.position.set(14, 25, 18);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 65;
+    sunLight.shadow.camera.left = -28;
+    sunLight.shadow.camera.right = 28;
+    sunLight.shadow.camera.top = 22;
+    sunLight.shadow.camera.bottom = -16;
+    sunLight.shadow.bias = -0.0005;
+    this.scene.add(sunLight);
+
+    // 3. Cool Subtle Temporal Rim Light
+    const rimLight = new THREE.DirectionalLight(0x38d9ff, 0.85);
+    rimLight.position.set(-16, 14, -10);
     this.scene.add(rimLight);
 
-    this.playerPointLight = new THREE.PointLight(0x38d9ff, 1.6, 9.0);
-    this.scene.add(this.playerPointLight);
+    // 4. Subtle Character Light
+    this.playerPointLight = new THREE.PointLight(0x38d9ff, 1.4, 7.5);
+    this.effectsGroup.add(this.playerPointLight);
 
     window.addEventListener('resize', this.onResize);
   }
@@ -210,10 +238,23 @@ export class Three25DScene {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    // Prevent browser scrolling on gameplay keys
+    if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+      e.preventDefault();
+    }
+
     this.keys[e.code] = true;
+
     if (e.code === 'KeyR') this.toggleRecording();
     if (e.code === 'KeyE') this.triggerReplayEcho();
     if (e.code === 'KeyF' || e.code === 'Enter') this.reqInteraction = true;
+
+    // Toggle runtime physics wireframe debugger (Phase 3)
+    if (e.code === 'F1' || e.code === 'Backquote') {
+      this.debugPhysicsEnabled = !this.debugPhysicsEnabled;
+      this.debugGroup.visible = this.debugPhysicsEnabled;
+    }
+
     if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
       this.jumpBufferTimer = 0.12;
     }
@@ -236,7 +277,7 @@ export class Three25DScene {
 
     this.clearSceneObjects();
     this.physics.resetWorld();
-    this.recordingSystem.stopRecording();
+    this.recordingSystem.reset();
     this.activeEchoTimelines = [];
     this.storedTracks = [];
 
@@ -246,38 +287,29 @@ export class Three25DScene {
 
     const pipeline = ModelAssetPipeline.getInstance();
 
-    // 1. Load Facility Environment (Back wall, gantry arches, distant mountains)
-    const facilityBg = SciFiAssetFactory.createFacilityEnvironment(70, 28);
-    this.scene.add(facilityBg);
+    // 1. Layer 1-3: Far Background & Facility Architecture (Z = -16 to -5)
+    const facilityBg = SciFiAssetFactory.createFacilityEnvironment(75, 30);
+    this.backgroundGroup.add(facilityBg);
     this.platformMeshes.push(facilityBg);
 
-    // 2. Load Real 3D GLB Nature Models (Ancient Trees, Boulders, Fern Clusters)
+    // Natural Reclaimed Trees in Midground (Z = -5.5 to -4.5)
     try {
-      const treeModel1 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
-      treeModel1.position.set(-16, -1.0, -5.5);
-      treeModel1.scale.set(1.1, 1.1, 1.1);
-      this.scene.add(treeModel1);
-      this.platformMeshes.push(treeModel1);
+      const tree1 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
+      tree1.position.set(-16, -1.0, -5.5);
+      tree1.scale.set(1.05, 1.05, 1.05);
+      this.architectureGroup.add(tree1);
+      this.platformMeshes.push(tree1);
 
-      const treeModel2 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
-      treeModel2.position.set(15, -1.0, -5.0);
-      treeModel2.scale.set(0.95, 0.95, 0.95);
-      this.scene.add(treeModel2);
-      this.platformMeshes.push(treeModel2);
-
-      // Distribute Foreground 3D Boulders
-      for (let x = -18; x <= 18; x += 9) {
-        const boulder = await pipeline.loadModel('/assets/nature/boulder_mossy.glb');
-        boulder.position.set(x + (Math.random() - 0.5) * 2, -1.8, 1.8);
-        boulder.scale.set(0.8, 0.8, 0.8);
-        this.scene.add(boulder);
-        this.platformMeshes.push(boulder);
-      }
+      const tree2 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
+      tree2.position.set(15, -1.0, -5.0);
+      tree2.scale.set(0.95, 0.95, 0.95);
+      this.architectureGroup.add(tree2);
+      this.platformMeshes.push(tree2);
     } catch (e) {
-      console.warn('Nature GLB loading bypassed to procedural fallback:', e);
+      console.warn('Nature GLB loading fallback:', e);
     }
 
-    // 3. Build Platforms with Rapier Colliders
+    // 2. Layer 4: Gameplay Environment Platforms (Z = 0)
     for (const p of config.platforms) {
       const w = p.width * scale;
       const h = p.height * scale;
@@ -287,13 +319,13 @@ export class Three25DScene {
 
       const platGroup = SciFiAssetFactory.createIndustrialPlatform(w, h, d);
       platGroup.position.set(x, y, 0);
-      this.scene.add(platGroup);
+      this.gameplayGroup.add(platGroup);
       this.platformMeshes.push(platGroup);
 
       this.physics.createStaticPlatform(x, y, w, h, d);
     }
 
-    // 4. Build Hazards (High-voltage pulsing lasers)
+    // 3. Layer 4: Hazards (High-voltage pulsing lasers at Z = 0)
     if (config.hazards) {
       const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
       for (const h of config.hazards) {
@@ -304,11 +336,11 @@ export class Three25DScene {
 
         const laserMesh = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, 1.8), laserMat);
         laserMesh.position.set(x, y, 0);
-        this.scene.add(laserMesh);
+        this.gameplayGroup.add(laserMesh);
 
         const hazardLight = new THREE.PointLight(0xff0055, 1.4, 4.0);
         hazardLight.position.set(x, y + 0.2, 0.6);
-        this.scene.add(hazardLight);
+        this.effectsGroup.add(hazardLight);
 
         this.hazardBoxes.push(
           new THREE.Box3(
@@ -319,7 +351,7 @@ export class Three25DScene {
       }
     }
 
-    // 5. Build Pressure Plates with Rapier Sensor Triggers
+    // 4. Layer 5: Interactive Pressure Plates with Rapier Sensor Triggers (Z = 0)
     for (const p of config.pressurePlates) {
       const w = p.width * scale;
       const x = p.x * scale + w / 2 + offsetX;
@@ -327,7 +359,7 @@ export class Three25DScene {
 
       const { plateGroup, padMesh, padLight } = SciFiAssetFactory.createPressurePlate(w);
       plateGroup.position.set(x, y, 0);
-      this.scene.add(plateGroup);
+      this.interactiveGroup.add(plateGroup);
 
       const { collider } = this.physics.createSensor(x, y + 0.15, w, 0.35, 2.0);
 
@@ -345,7 +377,7 @@ export class Three25DScene {
       });
     }
 
-    // 6. Build Switch Consoles (3D Real GLB or Detailed Asset)
+    // 5. Layer 5: Interactive Switch Consoles (Z = 0)
     for (const sw of config.switches) {
       const x = sw.x * scale + offsetX;
       const y = -sw.y * scale + offsetY;
@@ -357,11 +389,11 @@ export class Three25DScene {
         terminalGroup = SciFiAssetFactory.createSwitchTerminal().terminalGroup;
       }
       terminalGroup.position.set(x, y, 0);
-      this.scene.add(terminalGroup);
+      this.interactiveGroup.add(terminalGroup);
 
-      const beaconLight = new THREE.PointLight(0xd4a52c, 1.2, 4.5);
+      const beaconLight = new THREE.PointLight(0xd4a52c, 1.4, 4.5);
       beaconLight.position.set(x, y + 1.6, 0.4);
-      this.scene.add(beaconLight);
+      this.effectsGroup.add(beaconLight);
 
       this.switches.set(sw.id, {
         id: sw.id,
@@ -372,13 +404,13 @@ export class Three25DScene {
         timerRemaining: 0,
         isActive: false,
         bounds: new THREE.Box3(
-          new THREE.Vector3(x - 0.7, y, -1.0),
-          new THREE.Vector3(x + 0.7, y + 1.4, 1.0)
+          new THREE.Vector3(x - 0.9, y - 0.2, -1.0),
+          new THREE.Vector3(x + 0.9, y + 1.8, 1.0)
         ),
       });
     }
 
-    // 7. Build Mechanical Security Blast Doors (3D Real GLB or Factory)
+    // 6. Layer 5: Mechanical Security Blast Doors (Kinematic Rapier Collider at Z = 0)
     for (const d of config.doors) {
       const w = d.width * scale;
       const h = d.height * scale;
@@ -398,7 +430,7 @@ export class Three25DScene {
       }
 
       doorGroup.position.set(x, y, 0);
-      this.scene.add(doorGroup);
+      this.interactiveGroup.add(doorGroup);
 
       const { body } = this.physics.createKinematicDoor(x, y, w, h, 2.0);
 
@@ -419,7 +451,7 @@ export class Three25DScene {
       });
     }
 
-    // 8. Exit Gateway Portal
+    // 7. Layer 5: Exit Gateway Portal
     const exitX = config.exitPoint.x * scale + offsetX;
     const exitY = -config.exitPoint.y * scale + offsetY;
 
@@ -434,22 +466,25 @@ export class Three25DScene {
     );
     const vortex = new THREE.Mesh(
       new THREE.CircleGeometry(1.1, 32),
-      new THREE.MeshBasicMaterial({ color: 0x38d9ff, transparent: true, opacity: 0.6 })
+      new THREE.MeshBasicMaterial({ color: 0x38d9ff, transparent: true, opacity: 0.65 })
     );
     this.exitPortalGroup.add(arch, vortex);
     this.exitPortalGroup.position.set(exitX, exitY + 0.8, 0);
-    this.scene.add(this.exitPortalGroup);
+    this.interactiveGroup.add(this.exitPortalGroup);
 
     this.exitBox.set(
       new THREE.Vector3(exitX - 0.8, exitY - 0.5, -1.0),
       new THREE.Vector3(exitX + 0.8, exitY + 2.0, 1.0)
     );
 
-    // 9. Load Real 3D Humanoid Explorer Player Model
+    // 8. Layer 6: Spawn Humanoid Explorer Player Model (Z = 0)
     const spawnX = config.spawnPoint.x * scale + offsetX;
     const spawnY = -config.spawnPoint.y * scale + offsetY + 0.5;
 
     await this.buildPlayer(spawnX, spawnY);
+
+    // Build Debug Wireframes
+    this.rebuildPhysicsDebugMeshes();
 
     // Notify UI
     gameEvents.emit(EVENTS.LEVEL_LOADED, {
@@ -465,16 +500,16 @@ export class Three25DScene {
   }
 
   private async buildPlayer(spawnX: number, spawnY: number): Promise<void> {
-    if (!this.scene || !this.physics) return;
-    if (this.playerGroup) this.scene.remove(this.playerGroup);
+    if (!this.physics) return;
+    if (this.playerMeshGroup) this.characterGroup.remove(this.playerMeshGroup);
 
     try {
       const pipeline = ModelAssetPipeline.getInstance();
-      this.playerGroup = await pipeline.loadModel('/assets/characters/player_explorer.glb');
-      this.playerLeftLeg = this.playerGroup.getObjectByName('LeftLeg') || null;
-      this.playerRightLeg = this.playerGroup.getObjectByName('RightLeg') || null;
-      this.playerLeftArm = this.playerGroup.getObjectByName('LeftArm') || null;
-      this.playerRightArm = this.playerGroup.getObjectByName('RightArm') || null;
+      this.playerMeshGroup = await pipeline.loadModel('/assets/characters/player_explorer.glb');
+      this.playerLeftLeg = this.playerMeshGroup.getObjectByName('LeftLeg') || null;
+      this.playerRightLeg = this.playerMeshGroup.getObjectByName('RightLeg') || null;
+      this.playerLeftArm = this.playerMeshGroup.getObjectByName('LeftArm') || null;
+      this.playerRightArm = this.playerMeshGroup.getObjectByName('RightArm') || null;
     } catch {
       const {
         characterGroup,
@@ -483,17 +518,37 @@ export class Three25DScene {
         leftArm,
         rightArm,
       } = SciFiAssetFactory.createHumanoidCharacter(false);
-      this.playerGroup = characterGroup;
+      this.playerMeshGroup = characterGroup;
       this.playerLeftLeg = leftLeg;
       this.playerRightLeg = rightLeg;
       this.playerLeftArm = leftArm;
       this.playerRightArm = rightArm;
     }
 
-    this.scene.add(this.playerGroup);
+    this.characterGroup.add(this.playerMeshGroup);
 
     const { body } = this.physics.createPlayerBody(spawnX, spawnY);
     this.playerBody = body;
+  }
+
+  private rebuildPhysicsDebugMeshes(): void {
+    if (!this.physics) return;
+    while (this.debugGroup.children.length > 0) {
+      this.debugGroup.remove(this.debugGroup.children[0]);
+    }
+
+    const debugObjs = this.physics.getDebugObjects();
+    const platMat = new THREE.MeshBasicMaterial({ color: 0x00ff88, wireframe: true });
+    const sensorMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
+
+    for (const obj of debugObjs) {
+      const geom = new THREE.BoxGeometry(obj.extents.x, obj.extents.y, obj.extents.z);
+      const wireMesh = new THREE.Mesh(geom, obj.type === 'sensor' ? sensorMat : platMat);
+      wireMesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+      this.debugGroup.add(wireMesh);
+    }
+
+    this.debugGroup.visible = this.debugPhysicsEnabled;
   }
 
   private startLoop(): void {
@@ -524,7 +579,7 @@ export class Three25DScene {
   }
 
   private updatePlayerKinematics(dt: number, now: number): void {
-    if (this.isLevelComplete || !this.playerBody || !this.physics || !this.playerGroup) return;
+    if (this.isLevelComplete || !this.playerBody || !this.physics || !this.playerMeshGroup) return;
 
     const physicallyGrounded = this.physics.checkGrounded(0.85);
 
@@ -554,11 +609,11 @@ export class Three25DScene {
 
     if (Math.abs(targetVx) > 0.1) {
       this.facingDirection = targetVx > 0 ? 1 : -1;
-      this.playerGroup.rotation.y = this.facingDirection > 0 ? 0 : Math.PI;
+      this.playerMeshGroup.rotation.y = this.facingDirection > 0 ? 0 : Math.PI;
     }
 
     if (this.jumpBufferTimer > 0 && this.isGrounded) {
-      newVy = 13.0;
+      newVy = 13.5;
       this.isGrounded = false;
       this.coyoteTimer = 0;
       this.jumpBufferTimer = 0;
@@ -568,12 +623,13 @@ export class Three25DScene {
     this.playerBody.setLinvel({ x: newVx, y: newVy, z: 0 }, true);
 
     const translation = this.playerBody.translation();
-    this.playerGroup.position.set(translation.x, translation.y - 0.75, 0);
+    this.playerMeshGroup.position.set(translation.x, translation.y - 0.75, 0);
 
     if (this.playerPointLight) {
       this.playerPointLight.position.set(translation.x, translation.y + 0.2, 1.2);
     }
 
+    // Articulated Locomotion Animation
     this.animTime += dt * 10;
     if (this.playerLeftLeg && this.playerRightLeg && this.playerLeftArm && this.playerRightArm) {
       if (this.isGrounded && Math.abs(newVx) > 0.5) {
@@ -590,7 +646,7 @@ export class Three25DScene {
       }
     }
 
-    const playerBounds = new THREE.Box3().setFromObject(this.playerGroup);
+    const playerBounds = new THREE.Box3().setFromObject(this.playerMeshGroup);
     for (const hBox of this.hazardBoxes) {
       if (playerBounds.intersectsBox(hBox)) {
         this.handlePlayerDeath();
@@ -625,9 +681,10 @@ export class Three25DScene {
   }
 
   private updatePuzzles(dt: number): void {
-    if (!this.playerGroup) return;
-    const playerBounds = new THREE.Box3().setFromObject(this.playerGroup);
+    if (!this.playerMeshGroup) return;
+    const playerBounds = new THREE.Box3().setFromObject(this.playerMeshGroup);
 
+    // 1. Update Pressure Plates
     for (const [, plate] of this.plates) {
       let isPressed = playerBounds.intersectsBox(plate.bounds);
 
@@ -642,12 +699,24 @@ export class Three25DScene {
       if (isPressed !== plate.isPressed) {
         plate.isPressed = isPressed;
         plate.padMesh.position.y = isPressed ? 0.02 : 0.08;
-        plate.padLight.intensity = isPressed ? 1.6 : 0.8;
+        plate.padLight.intensity = isPressed ? 1.8 : 0.9;
         sound.playSwitch();
       }
     }
 
+    // 2. Update Switches (Player Interaction Fix - Phase 4)
     for (const [, sw] of this.switches) {
+      if (this.reqInteraction && playerBounds.intersectsBox(sw.bounds)) {
+        if (sw.type === 'toggle') {
+          sw.isActive = !sw.isActive;
+        } else {
+          sw.isActive = true;
+          sw.timerRemaining = sw.durationSeconds;
+        }
+        sw.beaconLight.color.setHex(sw.isActive ? 0x2cd5f5 : 0xd4a52c);
+        sound.playSwitch();
+      }
+
       if (sw.type === 'timed' && sw.isActive) {
         sw.timerRemaining -= dt;
         if (sw.timerRemaining <= 0) {
@@ -658,6 +727,7 @@ export class Three25DScene {
       }
     }
 
+    // 3. Update Doors (Sliding Bulkheads)
     for (const [, door] of this.doors) {
       let shouldOpen = true;
 
@@ -695,7 +765,6 @@ export class Three25DScene {
   }
 
   private updateEchoes(now: number): void {
-    if (!this.scene) return;
     const expired: typeof this.activeEchoTimelines = [];
 
     for (const echo of this.activeEchoTimelines) {
@@ -709,11 +778,28 @@ export class Three25DScene {
       if (sample) {
         echo.characterGroup.position.set(sample.x, sample.y, 0);
         echo.characterGroup.rotation.y = sample.flipX ? Math.PI : 0;
+
+        // Echo Switch Interaction (Phase 5 Fix)
+        if (sample.isInteracting) {
+          const echoBounds = new THREE.Box3().setFromObject(echo.characterGroup);
+          for (const [, sw] of this.switches) {
+            if (echoBounds.intersectsBox(sw.bounds)) {
+              if (sw.type === 'toggle') {
+                sw.isActive = !sw.isActive;
+              } else {
+                sw.isActive = true;
+                sw.timerRemaining = sw.durationSeconds;
+              }
+              sw.beaconLight.color.setHex(sw.isActive ? 0x2cd5f5 : 0xd4a52c);
+              sound.playSwitch();
+            }
+          }
+        }
       }
     }
 
     for (const exp of expired) {
-      this.scene.remove(exp.characterGroup);
+      this.characterGroup.remove(exp.characterGroup);
       this.activeEchoTimelines = this.activeEchoTimelines.filter(e => e !== exp);
     }
   }
@@ -774,7 +860,6 @@ export class Three25DScene {
   }
 
   public triggerReplayEcho(): void {
-    if (!this.scene) return;
     if (this.recordingSystem.getIsRecording()) {
       const samples = this.recordingSystem.stopRecording();
       if (samples.length > 0) this.storedTracks.push(samples);
@@ -786,7 +871,7 @@ export class Three25DScene {
     const { characterGroup } = SciFiAssetFactory.createHumanoidCharacter(true);
     const firstSample = track[0];
     characterGroup.position.set(firstSample.x, firstSample.y, 0);
-    this.scene.add(characterGroup);
+    this.characterGroup.add(characterGroup);
 
     this.activeEchoTimelines.push({
       characterGroup,
@@ -819,19 +904,31 @@ export class Three25DScene {
   }
 
   private clearSceneObjects(): void {
-    if (!this.scene) return;
-    this.platformMeshes.forEach(mesh => this.scene?.remove(mesh));
+    this.platformMeshes.forEach(mesh => {
+      this.backgroundGroup.remove(mesh);
+      this.architectureGroup.remove(mesh);
+      this.gameplayGroup.remove(mesh);
+    });
     this.platformMeshes = [];
     this.hazardBoxes = [];
-    this.plates.forEach(p => this.scene?.remove(p.plateGroup));
+
+    this.plates.forEach(p => this.interactiveGroup.remove(p.plateGroup));
     this.plates.clear();
-    this.switches.forEach(s => this.scene?.remove(s.terminalGroup));
+
+    this.switches.forEach(s => this.interactiveGroup.remove(s.terminalGroup));
     this.switches.clear();
-    this.doors.forEach(d => this.scene?.remove(d.doorGroup));
+
+    this.doors.forEach(d => this.interactiveGroup.remove(d.doorGroup));
     this.doors.clear();
-    this.activeEchoTimelines.forEach(e => this.scene?.remove(e.characterGroup));
+
+    this.activeEchoTimelines.forEach(e => this.characterGroup.remove(e.characterGroup));
     this.activeEchoTimelines = [];
-    if (this.exitPortalGroup) this.scene.remove(this.exitPortalGroup);
+
+    if (this.exitPortalGroup) this.interactiveGroup.remove(this.exitPortalGroup);
+
+    while (this.effectsGroup.children.length > 0) {
+      this.effectsGroup.remove(this.effectsGroup.children[0]);
+    }
   }
 
   public destroy(): void {
@@ -870,7 +967,7 @@ export class Three25DScene {
 
     this.scene = null;
     this.camera = null;
-    this.playerGroup = null;
+    this.playerMeshGroup = null;
     this.playerBody = null;
   }
 }

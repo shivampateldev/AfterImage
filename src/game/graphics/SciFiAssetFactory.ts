@@ -18,32 +18,32 @@ export class SciFiAssetFactory {
 
     // 1. Weathered Concrete Floor with Natural Moss & Water Stains
     this.matFloor = new THREE.MeshStandardMaterial({
-      color: 0x3a4656,
-      roughness: 0.75,
-      metalness: 0.15,
+      color: 0x47566b,
+      roughness: 0.72,
+      metalness: 0.12,
       map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
 
     // 2. Industrial Wall Panels with Architectural Grime
     this.matWall = new THREE.MeshStandardMaterial({
-      color: 0x222c3a,
-      roughness: 0.8,
-      metalness: 0.25,
+      color: 0x2e3b4d,
+      roughness: 0.78,
+      metalness: 0.2,
       map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
 
     // 3. Heavy Corroded Steel Beams & Structural Framing
     this.matTrim = new THREE.MeshStandardMaterial({
-      color: 0x3d4959,
-      roughness: 0.55,
+      color: 0x4f5d6f,
+      roughness: 0.52,
       metalness: 0.75,
       map: hasDoc ? TextureGenerator.getCorrodedSteel() : null,
     });
 
     // 4. Dark Weathered Alloy
     this.matMetalDark = new THREE.MeshStandardMaterial({
-      color: 0x18202c,
-      roughness: 0.6,
+      color: 0x232c3a,
+      roughness: 0.58,
       metalness: 0.85,
       map: hasDoc ? TextureGenerator.getCorrodedSteel() : null,
     });
@@ -76,7 +76,7 @@ export class SciFiAssetFactory {
 
   /**
    * Builds an overgrown, weathered industrial concrete platform reclaimed by moss,
-   * with steel curb edging, hanging roots, and underside cable conduits.
+   * strictly centered on the gameplay plane (Z = 0).
    */
   public static createIndustrialPlatform(width: number, height: number, depth: number = 4.0): THREE.Group {
     this.initMaterials();
@@ -97,14 +97,14 @@ export class SciFiAssetFactory {
     curbBack.position.set(0, height / 2 + 0.05, -depth / 2 + 0.15);
     group.add(curbFront, curbBack);
 
-    // 3. Overgrown Nature & Hanging Foliage
+    // 3. Overgrown Nature & Hanging Foliage (Strictly behind or below gameplay line)
     if (width >= 2.5) {
       const vineLeft = NatureAssetFactory.createHangingVines(1.8);
-      vineLeft.position.set(-width * 0.3, -height / 2, depth / 2 + 0.05);
+      vineLeft.position.set(-width * 0.3, -height / 2, -0.6);
       group.add(vineLeft);
 
       const fern = NatureAssetFactory.createFernPatch();
-      fern.position.set(width * 0.25, height / 2, depth * 0.2);
+      fern.position.set(width * 0.25, height / 2, -0.8);
       group.add(fern);
     }
 
@@ -238,8 +238,6 @@ export class SciFiAssetFactory {
 
   /**
    * High-Fidelity Humanoid Explorer Character
-   * Proportioned character with research jacket, cybernetic visor, atmospheric backpack,
-   * and articulated limbs for realistic walk/run/jump cycles.
    */
   public static createHumanoidCharacter(isEcho: boolean = false): {
     characterGroup: THREE.Group;
@@ -254,14 +252,14 @@ export class SciFiAssetFactory {
     const suitMat = isEcho
       ? new THREE.MeshStandardMaterial({
           color: 0x8b66fa,
-          emissive: 0x2cd5f5,
+          emissive: 0x38d9ff,
           emissiveIntensity: 0.8,
           transparent: true,
-          opacity: 0.65,
+          opacity: 0.7,
           roughness: 0.3,
         })
       : new THREE.MeshStandardMaterial({
-          color: 0x2b384a, // Weathered slate-navy exploratory suit
+          color: 0x334458, // Weathered slate-navy exploratory suit
           roughness: 0.65,
           metalness: 0.25,
         });
@@ -332,9 +330,9 @@ export class SciFiAssetFactory {
   }
 
   /**
-   * Multi-Layered Cinematic 2.5D Environment:
-   * Combines broken research architecture, mossy overgrown walls, ancient trees,
-   * climbing ivy, hanging conduits, and distant mountain silhouettes.
+   * Background and Architecture Environment:
+   * Sets up distant landscape and facility back wall with structural columns at Z = -16 to -5.
+   * Does NOT place foreground boulders or clutter in front of the gameplay plane!
    */
   public static createFacilityEnvironment(roomWidth: number = 70, roomHeight: number = 28): THREE.Group {
     this.initMaterials();
@@ -343,7 +341,7 @@ export class SciFiAssetFactory {
     // 1. Distant Foggy Landscape (Far Background: Z = -16)
     const mountainGeom = new THREE.PlaneGeometry(roomWidth * 1.5, roomHeight * 1.2);
     const mountainMat = new THREE.MeshStandardMaterial({
-      color: 0x121a24,
+      color: 0x1d2939,
       roughness: 0.95,
       metalness: 0.05,
     });
@@ -358,7 +356,7 @@ export class SciFiAssetFactory {
     backWall.receiveShadow = true;
     envGroup.add(backWall);
 
-    // 3. Ancient Trees & Giant Roots Reclaiming the Complex
+    // 3. Ancient Trees & Giant Roots Reclaiming the Complex (Z = -5.5 to -5.0)
     const tree1 = NatureAssetFactory.createAncientTree(14);
     tree1.position.set(-18, -1.0, -5.5);
     envGroup.add(tree1);
@@ -367,24 +365,21 @@ export class SciFiAssetFactory {
     tree2.position.set(16, -1.0, -5.0);
     envGroup.add(tree2);
 
-    // 4. Overgrown Gantry Columns & Broken Ceiling Trusses
+    // 4. Overgrown Gantry Columns & Broken Ceiling Trusses (Z = -4.8)
     for (let x = -roomWidth / 2 + 6; x <= roomWidth / 2 - 6; x += 10) {
       const archGroup = new THREE.Group();
       archGroup.position.set(x, 0, -4.8);
 
-      // Heavy industrial column
       const pillar = new THREE.Mesh(
         new THREE.BoxGeometry(0.5, roomHeight, 0.7),
         this.matTrim
       );
       pillar.position.set(0, roomHeight / 2 - 2, 0);
 
-      // Overgrown Ivy Vines hanging from the column
       const vine = NatureAssetFactory.createHangingVines(3.5);
       vine.position.set(0.1, roomHeight - 6, 0.35);
       archGroup.add(pillar, vine);
 
-      // Overhead industrial conduit
       const conduit = new THREE.Mesh(
         new THREE.CylinderGeometry(0.14, 0.14, 10.0, 8),
         this.matMetalDark
@@ -394,17 +389,6 @@ export class SciFiAssetFactory {
       archGroup.add(conduit);
 
       envGroup.add(archGroup);
-    }
-
-    // 5. Environmental Foreground Boulders & Undergrowth (Z = 1.5 to 2.5)
-    for (let x = -20; x <= 20; x += 9) {
-      const rock = NatureAssetFactory.createMossyBoulder(0.6 + Math.random() * 0.4);
-      rock.position.set(x + (Math.random() - 0.5) * 3, -1.8, 1.8);
-      envGroup.add(rock);
-
-      const fern = NatureAssetFactory.createFernPatch();
-      fern.position.set(x + (Math.random() - 0.5) * 2, -1.8, 1.4);
-      envGroup.add(fern);
     }
 
     return envGroup;

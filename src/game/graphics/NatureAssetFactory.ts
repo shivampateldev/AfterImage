@@ -3,8 +3,8 @@ import { TextureGenerator } from './TextureGenerator';
 
 /**
  * Organic Nature & Overgrowth Asset Pipeline
- * Generates trees, ancient roots, ferns, hanging climbing vines, rocks, and foliage
- * inspired by INSIDE and Planet of Lana.
+ * Generates trees with natural trunk branching, leaf clusters, mossy boulders,
+ * and hanging vines inspired by INSIDE and Planet of Lana.
  */
 export class NatureAssetFactory {
   private static matBark: THREE.MeshStandardMaterial;
@@ -15,43 +15,46 @@ export class NatureAssetFactory {
   public static init(): void {
     if (this.matBark) return;
 
+    const hasDoc = typeof document !== 'undefined';
+
     this.matBark = new THREE.MeshStandardMaterial({
-      color: 0x3d322a,
-      roughness: 0.9,
+      color: 0x42382e,
+      roughness: 0.85,
       metalness: 0.05,
-      map: typeof document !== 'undefined' ? TextureGenerator.getTreeBark() : null,
+      map: hasDoc ? TextureGenerator.getTreeBark() : null,
     });
 
     this.matLeaves = new THREE.MeshStandardMaterial({
-      color: 0x2e4a2d,
-      roughness: 0.65,
+      color: 0x3d6335,
+      roughness: 0.7,
       metalness: 0.0,
       side: THREE.DoubleSide,
     });
 
     this.matVines = new THREE.MeshStandardMaterial({
-      color: 0x34542d,
-      roughness: 0.7,
+      color: 0x385c2c,
+      roughness: 0.75,
       metalness: 0.05,
     });
 
     this.matRock = new THREE.MeshStandardMaterial({
-      color: 0x2c333a,
-      roughness: 0.85,
+      color: 0x48525e,
+      roughness: 0.8,
       metalness: 0.15,
-      map: typeof document !== 'undefined' ? TextureGenerator.getAgedConcrete() : null,
+      map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
   }
 
   /**
-   * Creates an ancient gnarly tree reclaiming concrete facility foundations.
+   * Creates an ancient gnarly tree with detailed branch canopy and natural silhouette.
    */
   public static createAncientTree(height: number = 10): THREE.Group {
     this.init();
     const treeGroup = new THREE.Group();
+    treeGroup.name = 'AncientTreeGroup';
 
-    // Main Trunk with natural curvature
-    const trunkGeom = new THREE.CylinderGeometry(0.35, 0.7, height, 8);
+    // Main Trunk with natural tapered curvature
+    const trunkGeom = new THREE.CylinderGeometry(0.3, 0.65, height, 10);
     const trunk = new THREE.Mesh(trunkGeom, this.matBark);
     trunk.position.y = height / 2;
     trunk.castShadow = true;
@@ -62,54 +65,68 @@ export class NatureAssetFactory {
     for (let i = 0; i < 4; i++) {
       const angle = (i * Math.PI) / 2 + Math.PI / 4;
       const root = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.28, 2.5, 6),
+        new THREE.CylinderGeometry(0.1, 0.25, 2.2, 6),
         this.matBark
       );
-      root.position.set(Math.cos(angle) * 0.7, 0.6, Math.sin(angle) * 0.7);
-      root.rotation.z = Math.cos(angle) * 0.5;
-      root.rotation.x = Math.sin(angle) * 0.5;
+      root.position.set(Math.cos(angle) * 0.6, 0.6, Math.sin(angle) * 0.6);
+      root.rotation.z = Math.cos(angle) * 0.45;
+      root.rotation.x = Math.sin(angle) * 0.45;
       treeGroup.add(root);
     }
 
-    // Branching Canopies with clustered verdant foliage
-    const branches = [
-      { y: height * 0.6, scale: 2.2, offset: new THREE.Vector3(-0.8, 0, 0.2) },
-      { y: height * 0.8, scale: 2.8, offset: new THREE.Vector3(0.9, 0, -0.3) },
-      { y: height * 0.95, scale: 3.2, offset: new THREE.Vector3(0.0, 0, 0.0) },
+    // Natural Branch Spreads
+    const branchConfigs = [
+      { y: height * 0.55, rotZ: 0.6, rotY: 0.2, length: 2.8, scale: 1.6 },
+      { y: height * 0.7, rotZ: -0.55, rotY: 1.4, length: 3.2, scale: 1.8 },
+      { y: height * 0.82, rotZ: 0.45, rotY: -1.0, length: 2.4, scale: 1.5 },
+      { y: height * 0.92, rotZ: -0.3, rotY: 0.5, length: 2.0, scale: 1.4 },
+      { y: height * 0.98, rotZ: 0.1, rotY: 2.1, length: 1.8, scale: 2.2 },
     ];
 
-    branches.forEach(b => {
-      const foliageCluster = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(b.scale, 1),
+    branchConfigs.forEach((cfg) => {
+      const limb = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.1, 0.22, cfg.length, 6),
+        this.matBark
+      );
+      limb.position.set(0, cfg.y, 0);
+      limb.rotation.z = cfg.rotZ;
+      limb.rotation.y = cfg.rotY;
+      treeGroup.add(limb);
+
+      // Fine leaf cluster at the tip of each branch
+      const tipOffset = new THREE.Vector3(0, cfg.length / 2, 0).applyEuler(limb.rotation);
+      const leafCluster = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(cfg.scale, 1),
         this.matLeaves
       );
-      foliageCluster.position.set(b.offset.x, b.y, b.offset.z);
-      foliageCluster.castShadow = true;
-      treeGroup.add(foliageCluster);
+      leafCluster.position.set(tipOffset.x, cfg.y + tipOffset.y, tipOffset.z);
+      leafCluster.castShadow = true;
+      treeGroup.add(leafCluster);
     });
 
     return treeGroup;
   }
 
   /**
-   * Creates natural hanging moss and climbing ivy vines to drape over concrete walls.
+   * Creates natural hanging moss and climbing ivy vines.
    */
-  public static createHangingVines(length: number = 4.0): THREE.Group {
+  public static createHangingVines(length: number = 3.5): THREE.Group {
     this.init();
     const vineGroup = new THREE.Group();
+    vineGroup.name = 'HangingVinesGroup';
 
-    const segments = Math.floor(length / 0.8);
+    const segments = Math.floor(length / 0.7);
     for (let i = 0; i < segments; i++) {
       const strand = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.04, 0.03, 0.9, 5),
+        new THREE.CylinderGeometry(0.035, 0.025, 0.8, 5),
         this.matVines
       );
       strand.position.set(
-        Math.sin(i * 1.5) * 0.15,
-        -i * 0.75,
-        Math.cos(i * 1.5) * 0.1
+        Math.sin(i * 1.4) * 0.12,
+        -i * 0.65,
+        Math.cos(i * 1.4) * 0.08
       );
-      strand.rotation.z = Math.sin(i) * 0.2;
+      strand.rotation.z = Math.sin(i) * 0.18;
       vineGroup.add(strand);
     }
 
@@ -117,16 +134,15 @@ export class NatureAssetFactory {
   }
 
   /**
-   * Creates mossy weathered boulders and rock clusters.
+   * Creates mossy weathered boulders.
    */
   public static createMossyBoulder(radius: number = 0.8): THREE.Mesh {
     this.init();
-    const geom = new THREE.DodecahedronGeometry(radius, 1);
-    // Displace vertices organically
+    const geom = new THREE.IcosahedronGeometry(radius, 1);
     const pos = geom.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const v = new THREE.Vector3().fromBufferAttribute(pos, i);
-      v.multiplyScalar(0.85 + Math.random() * 0.3);
+      v.multiplyScalar(0.88 + Math.random() * 0.25);
       pos.setXYZ(i, v.x, v.y, v.z);
     }
     geom.computeVertexNormals();
@@ -138,25 +154,22 @@ export class NatureAssetFactory {
   }
 
   /**
-   * Creates lush environmental ground ferns and undergrowth.
+   * Creates clusters of verdant ferns.
    */
   public static createFernPatch(): THREE.Group {
     this.init();
-    const fernGroup = new THREE.Group();
+    const patch = new THREE.Group();
+    patch.name = 'FernPatchGroup';
 
-    for (let i = 0; i < 7; i++) {
-      const angle = (i * Math.PI * 2) / 7;
-      const frond = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.25, 0.9),
-        this.matLeaves
-      );
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * Math.PI * 2) / 6;
+      const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.8), this.matLeaves);
       frond.position.set(Math.cos(angle) * 0.25, 0.35, Math.sin(angle) * 0.25);
       frond.rotation.y = angle;
-      frond.rotation.x = Math.PI / 4;
-      fernGroup.add(frond);
+      frond.rotation.x = Math.PI / 4.5;
+      patch.add(frond);
     }
 
-    return fernGroup;
+    return patch;
   }
 }
-

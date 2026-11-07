@@ -40,3 +40,4 @@ public/assets/
 | **Textures** | `tex_soil_overgrown` | 512x512 Dark damp earth with verdant moss clusters | Original Procedural Generator | Level 01 & Greenhouse base map |
 | **Textures** | `tex_bark_timber` | 256x512 Fibrous vertical tree bark with lichen | Original Procedural Generator | Ancient tree asset map |
 | **Branding** | `smp_brand_logo` | Metallic Gold logo, star/arrow emblem, "1% CHANCE. 99% FAITH." | SMP Proprietary | Official attribution asset |
+

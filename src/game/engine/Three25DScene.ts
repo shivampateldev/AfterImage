@@ -6,13 +6,14 @@ import { sound } from '../../services/audio/AudioService';
 import { RecordingSystem } from '../systems/RecordingSystem';
 import { SciFiAssetFactory } from '../graphics/SciFiAssetFactory';
 import { RapierPhysicsWorld } from '../physics/RapierPhysicsWorld';
+import { ModelAssetPipeline } from '../graphics/ModelAssetPipeline';
 
 export type SceneLifecycleState = 'new' | 'initializing' | 'ready' | 'destroying' | 'destroyed';
 
 export interface PhysicalDoor {
   id: string;
   doorGroup: THREE.Group;
-  slidingSlab: THREE.Mesh;
+  slidingSlab: THREE.Object3D;
   body: RAPIER.RigidBody;
   initialY: number;
   openOffsetY: number;
@@ -34,7 +35,6 @@ export interface PhysicalPlate {
 export interface PhysicalSwitch {
   id: string;
   terminalGroup: THREE.Group;
-  beaconMesh: THREE.Mesh;
   beaconLight: THREE.PointLight;
   type: 'toggle' | 'timed';
   durationSeconds: number;
@@ -57,10 +57,10 @@ export class Three25DScene {
 
   // 3D Player Meshes & Animation Hierarchy
   private playerGroup: THREE.Group | null = null;
-  private playerLeftLeg: THREE.Mesh | null = null;
-  private playerRightLeg: THREE.Mesh | null = null;
-  private playerLeftArm: THREE.Mesh | null = null;
-  private playerRightArm: THREE.Mesh | null = null;
+  private playerLeftLeg: THREE.Object3D | null = null;
+  private playerRightLeg: THREE.Object3D | null = null;
+  private playerLeftArm: THREE.Object3D | null = null;
+  private playerRightArm: THREE.Object3D | null = null;
   private playerPointLight: THREE.PointLight | null = null;
   private facingDirection: number = 1; // 1 = Right, -1 = Left
 
@@ -111,29 +111,23 @@ export class Three25DScene {
     this.state = 'initializing';
 
     try {
-      // 1. Initialize Three.js WebGL Renderer & Scene
       this.initThree();
       this.initInputs();
 
-      // Check if destroyed during synchronous setup
       if ((this.state as SceneLifecycleState) === 'destroying' || (this.state as SceneLifecycleState) === 'destroyed') {
         this.cleanup();
         return false;
       }
 
-      // 2. Await Rapier Physics WASM and instantiate world
       this.physics = await RapierPhysicsWorld.createWorld();
 
-      // Check if unmounted/destroyed while awaiting WASM
       if ((this.state as SceneLifecycleState) === 'destroying' || (this.state as SceneLifecycleState) === 'destroyed') {
         this.cleanup();
         return false;
       }
 
-      // 3. Load Level Geometry & Colliders
-      this.loadLevel(this.currentLevelConfig);
+      await this.loadLevel(this.currentLevelConfig);
 
-      // 4. Start 60Hz Physics & Render Loop
       this.state = 'ready';
       this.startLoop();
 
@@ -155,8 +149,8 @@ export class Three25DScene {
     const height = this.container.clientHeight || 600;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0a101d);
-    this.scene.fog = new THREE.FogExp2(0x0a101d, 0.016);
+    this.scene.background = new THREE.Color(0x0c131e);
+    this.scene.fog = new THREE.FogExp2(0x0c131e, 0.015);
 
     this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 120);
     this.camera.position.set(0, 5, 26);
@@ -169,17 +163,16 @@ export class Three25DScene {
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    // Supported modern shadow map type (replaces removed PCFSoftShadowMap)
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.2;
+    this.renderer.toneMappingExposure = 1.25;
     this.container.appendChild(this.renderer.domElement);
 
-    // Balanced Cinematic Lighting Setup
-    const ambientLight = new THREE.AmbientLight(0x1a273e, 1.4);
+    // Three-point cinematic lighting
+    const ambientLight = new THREE.AmbientLight(0x233148, 1.4);
     this.scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0x38d9ff, 1.6);
+    const dirLight = new THREE.DirectionalLight(0x38d9ff, 1.7);
     dirLight.position.set(12, 24, 18);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -196,7 +189,6 @@ export class Three25DScene {
     rimLight.position.set(-18, 12, -12);
     this.scene.add(rimLight);
 
-    // Dynamic Player Chest Point Light
     this.playerPointLight = new THREE.PointLight(0x38d9ff, 1.6, 9.0);
     this.scene.add(this.playerPointLight);
 
@@ -223,7 +215,7 @@ export class Three25DScene {
     if (e.code === 'KeyE') this.triggerReplayEcho();
     if (e.code === 'KeyF' || e.code === 'Enter') this.reqInteraction = true;
     if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') {
-      this.jumpBufferTimer = 0.12; // 120ms jump buffer
+      this.jumpBufferTimer = 0.12;
     }
   };
 
@@ -231,10 +223,9 @@ export class Three25DScene {
     this.keys[e.code] = false;
   };
 
-  public loadLevel(config: LevelConfig): void {
+  public async loadLevel(config: LevelConfig): Promise<void> {
     this.currentLevelConfig = config;
 
-    // Safety guard: If physics or scene not ready yet, postpone until ready
     if (!this.physics || !this.scene) {
       return;
     }
@@ -243,24 +234,50 @@ export class Three25DScene {
     this.levelStartTime = performance.now();
     this.hintsUsedCount = 0;
 
-    // Clear previous geometries and physics bodies
     this.clearSceneObjects();
     this.physics.resetWorld();
     this.recordingSystem.stopRecording();
     this.activeEchoTimelines = [];
     this.storedTracks = [];
 
-    // Scale conversion: 1 unit in 3D = 40 pixels in level config
     const scale = 0.025;
     const offsetY = 7.0;
     const offsetX = -12.0;
 
-    // 1. Build Ambient Facility Architecture (Walls, Gantry, Beams)
-    const facilityBg = SciFiAssetFactory.createFacilityEnvironment(65, 26);
+    const pipeline = ModelAssetPipeline.getInstance();
+
+    // 1. Load Facility Environment (Back wall, gantry arches, distant mountains)
+    const facilityBg = SciFiAssetFactory.createFacilityEnvironment(70, 28);
     this.scene.add(facilityBg);
     this.platformMeshes.push(facilityBg);
 
-    // 2. Build Physical Platforms with Rapier Fixed RigidBodies
+    // 2. Load Real 3D GLB Nature Models (Ancient Trees, Boulders, Fern Clusters)
+    try {
+      const treeModel1 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
+      treeModel1.position.set(-16, -1.0, -5.5);
+      treeModel1.scale.set(1.1, 1.1, 1.1);
+      this.scene.add(treeModel1);
+      this.platformMeshes.push(treeModel1);
+
+      const treeModel2 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
+      treeModel2.position.set(15, -1.0, -5.0);
+      treeModel2.scale.set(0.95, 0.95, 0.95);
+      this.scene.add(treeModel2);
+      this.platformMeshes.push(treeModel2);
+
+      // Distribute Foreground 3D Boulders
+      for (let x = -18; x <= 18; x += 9) {
+        const boulder = await pipeline.loadModel('/assets/nature/boulder_mossy.glb');
+        boulder.position.set(x + (Math.random() - 0.5) * 2, -1.8, 1.8);
+        boulder.scale.set(0.8, 0.8, 0.8);
+        this.scene.add(boulder);
+        this.platformMeshes.push(boulder);
+      }
+    } catch (e) {
+      console.warn('Nature GLB loading bypassed to procedural fallback:', e);
+    }
+
+    // 3. Build Platforms with Rapier Colliders
     for (const p of config.platforms) {
       const w = p.width * scale;
       const h = p.height * scale;
@@ -268,17 +285,15 @@ export class Three25DScene {
       const x = p.x * scale + w / 2 + offsetX;
       const y = -p.y * scale - h / 2 + offsetY;
 
-      // Visual 3D Mesh
       const platGroup = SciFiAssetFactory.createIndustrialPlatform(w, h, d);
       platGroup.position.set(x, y, 0);
       this.scene.add(platGroup);
       this.platformMeshes.push(platGroup);
 
-      // Real Rapier Static RigidBody & Cuboid Collider
       this.physics.createStaticPlatform(x, y, w, h, d);
     }
 
-    // 3. Build Hazards (High-voltage pulsing lasers)
+    // 4. Build Hazards (High-voltage pulsing lasers)
     if (config.hazards) {
       const laserMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
       for (const h of config.hazards) {
@@ -304,7 +319,7 @@ export class Three25DScene {
       }
     }
 
-    // 4. Build Pressure Plates with Rapier Sensor Triggers
+    // 5. Build Pressure Plates with Rapier Sensor Triggers
     for (const p of config.pressurePlates) {
       const w = p.width * scale;
       const x = p.x * scale + w / 2 + offsetX;
@@ -330,19 +345,27 @@ export class Three25DScene {
       });
     }
 
-    // 5. Build Switch Consoles
+    // 6. Build Switch Consoles (3D Real GLB or Detailed Asset)
     for (const sw of config.switches) {
       const x = sw.x * scale + offsetX;
       const y = -sw.y * scale + offsetY;
 
-      const { terminalGroup, beaconMesh, beaconLight } = SciFiAssetFactory.createSwitchTerminal();
+      let terminalGroup: THREE.Group;
+      try {
+        terminalGroup = await pipeline.loadModel('/assets/props/terminal_console.glb');
+      } catch {
+        terminalGroup = SciFiAssetFactory.createSwitchTerminal().terminalGroup;
+      }
       terminalGroup.position.set(x, y, 0);
       this.scene.add(terminalGroup);
+
+      const beaconLight = new THREE.PointLight(0xd4a52c, 1.2, 4.5);
+      beaconLight.position.set(x, y + 1.6, 0.4);
+      this.scene.add(beaconLight);
 
       this.switches.set(sw.id, {
         id: sw.id,
         terminalGroup,
-        beaconMesh,
         beaconLight,
         type: sw.type,
         durationSeconds: sw.durationSeconds || 5,
@@ -355,14 +378,25 @@ export class Three25DScene {
       });
     }
 
-    // 6. Build Mechanical Security Blast Doors
+    // 7. Build Mechanical Security Blast Doors (3D Real GLB or Factory)
     for (const d of config.doors) {
       const w = d.width * scale;
       const h = d.height * scale;
       const x = d.x * scale + w / 2 + offsetX;
       const y = -d.y * scale - h / 2 + offsetY;
 
-      const { doorGroup, slidingSlab } = SciFiAssetFactory.createMechanicalDoor(w, h, 2.0);
+      let doorGroup: THREE.Group;
+      let slidingSlab: THREE.Object3D;
+
+      try {
+        doorGroup = await pipeline.loadModel('/assets/machinery/door_bulkhead.glb');
+        slidingSlab = doorGroup.getObjectByName('Sliding_Slab') || doorGroup;
+      } catch {
+        const res = SciFiAssetFactory.createMechanicalDoor(w, h, 2.0);
+        doorGroup = res.doorGroup;
+        slidingSlab = res.slidingSlab;
+      }
+
       doorGroup.position.set(x, y, 0);
       this.scene.add(doorGroup);
 
@@ -385,7 +419,7 @@ export class Three25DScene {
       });
     }
 
-    // 7. Exit Gateway Portal
+    // 8. Exit Gateway Portal
     const exitX = config.exitPoint.x * scale + offsetX;
     const exitY = -config.exitPoint.y * scale + offsetY;
 
@@ -411,11 +445,11 @@ export class Three25DScene {
       new THREE.Vector3(exitX + 0.8, exitY + 2.0, 1.0)
     );
 
-    // 8. Player Character Model & Rigid Body
+    // 9. Load Real 3D Humanoid Explorer Player Model
     const spawnX = config.spawnPoint.x * scale + offsetX;
     const spawnY = -config.spawnPoint.y * scale + offsetY + 0.5;
 
-    this.buildPlayer(spawnX, spawnY);
+    await this.buildPlayer(spawnX, spawnY);
 
     // Notify UI
     gameEvents.emit(EVENTS.LEVEL_LOADED, {
@@ -430,33 +464,40 @@ export class Three25DScene {
     });
   }
 
-  private buildPlayer(spawnX: number, spawnY: number): void {
+  private async buildPlayer(spawnX: number, spawnY: number): Promise<void> {
     if (!this.scene || !this.physics) return;
     if (this.playerGroup) this.scene.remove(this.playerGroup);
 
-    const {
-      characterGroup,
-      leftLeg,
-      rightLeg,
-      leftArm,
-      rightArm,
-    } = SciFiAssetFactory.createHumanoidCharacter(false);
-
-    this.playerGroup = characterGroup;
-    this.playerLeftLeg = leftLeg;
-    this.playerRightLeg = rightLeg;
-    this.playerLeftArm = leftArm;
-    this.playerRightArm = rightArm;
+    try {
+      const pipeline = ModelAssetPipeline.getInstance();
+      this.playerGroup = await pipeline.loadModel('/assets/characters/player_explorer.glb');
+      this.playerLeftLeg = this.playerGroup.getObjectByName('LeftLeg') || null;
+      this.playerRightLeg = this.playerGroup.getObjectByName('RightLeg') || null;
+      this.playerLeftArm = this.playerGroup.getObjectByName('LeftArm') || null;
+      this.playerRightArm = this.playerGroup.getObjectByName('RightArm') || null;
+    } catch {
+      const {
+        characterGroup,
+        leftLeg,
+        rightLeg,
+        leftArm,
+        rightArm,
+      } = SciFiAssetFactory.createHumanoidCharacter(false);
+      this.playerGroup = characterGroup;
+      this.playerLeftLeg = leftLeg;
+      this.playerRightLeg = rightLeg;
+      this.playerLeftArm = leftArm;
+      this.playerRightArm = rightArm;
+    }
 
     this.scene.add(this.playerGroup);
 
-    // Create Rapier Dynamic Rigid Body
     const { body } = this.physics.createPlayerBody(spawnX, spawnY);
     this.playerBody = body;
   }
 
   private startLoop(): void {
-    if (this.animFrameId !== null) return; // Prevent duplicate loops
+    if (this.animFrameId !== null) return;
 
     const loop = (now: number) => {
       if (this.state !== 'ready') return;
@@ -464,24 +505,15 @@ export class Three25DScene {
       const dt = Math.min((now - this.lastTickTime) / 1000, 0.05);
       this.lastTickTime = now;
 
-      // 1. Fixed Timestep Physics Simulation
       if (this.physics) {
         this.physics.step(dt);
       }
 
-      // 2. Kinematics, Movement, Buffers & Jump Resolution
       this.updatePlayerKinematics(dt, now);
-
-      // 3. Puzzles, Sensor Contacts & Mechanical Doors
       this.updatePuzzles(dt);
-
-      // 4. Temporal Echoes Playback
       this.updateEchoes(now);
-
-      // 5. Cinematic Smooth Camera
       this.updateCamera();
 
-      // 6. WebGL Render
       if (this.renderer && this.scene && this.camera) {
         this.renderer.render(this.scene, this.camera);
       }
@@ -494,12 +526,11 @@ export class Three25DScene {
   private updatePlayerKinematics(dt: number, now: number): void {
     if (this.isLevelComplete || !this.playerBody || !this.physics || !this.playerGroup) return;
 
-    // Robust Ground Detection via Raycast
     const physicallyGrounded = this.physics.checkGrounded(0.85);
 
     if (physicallyGrounded) {
       this.isGrounded = true;
-      this.coyoteTimer = 0.1; // 100ms Coyote Time
+      this.coyoteTimer = 0.1;
     } else {
       this.coyoteTimer -= dt;
       if (this.coyoteTimer <= 0) {
@@ -511,7 +542,6 @@ export class Three25DScene {
       this.jumpBufferTimer -= dt;
     }
 
-    // Horizontal Movement
     const maxSpeed = 7.5;
     const accel = 45.0;
     let targetVx = 0;
@@ -522,34 +552,28 @@ export class Three25DScene {
     let newVx = THREE.MathUtils.lerp(currentVel.x, targetVx, accel * dt);
     let newVy = currentVel.y;
 
-    // Handle Directional Orientation
     if (Math.abs(targetVx) > 0.1) {
       this.facingDirection = targetVx > 0 ? 1 : -1;
       this.playerGroup.rotation.y = this.facingDirection > 0 ? 0 : Math.PI;
     }
 
-    // Jump Execution (Grounded or within Coyote Time)
     if (this.jumpBufferTimer > 0 && this.isGrounded) {
-      newVy = 13.0; // Jump impulse
+      newVy = 13.0;
       this.isGrounded = false;
       this.coyoteTimer = 0;
       this.jumpBufferTimer = 0;
       sound.playJump();
     }
 
-    // Apply linear velocity back to Rapier body (Constrained to XY plane: Z = 0)
     this.playerBody.setLinvel({ x: newVx, y: newVy, z: 0 }, true);
 
-    // Synchronize Three.js 3D Mesh to Rapier Physics Body
     const translation = this.playerBody.translation();
     this.playerGroup.position.set(translation.x, translation.y - 0.75, 0);
 
-    // Dynamic Player Light tracking
     if (this.playerPointLight) {
       this.playerPointLight.position.set(translation.x, translation.y + 0.2, 1.2);
     }
 
-    // Procedural Running & Jumping Limb Animation
     this.animTime += dt * 10;
     if (this.playerLeftLeg && this.playerRightLeg && this.playerLeftArm && this.playerRightArm) {
       if (this.isGrounded && Math.abs(newVx) > 0.5) {
@@ -559,7 +583,6 @@ export class Three25DScene {
         this.playerLeftArm.rotation.x = -legAngle * 0.8;
         this.playerRightArm.rotation.x = legAngle * 0.8;
       } else {
-        // Idle / In-Air Pose
         this.playerLeftLeg.rotation.x = 0;
         this.playerRightLeg.rotation.x = 0;
         this.playerLeftArm.rotation.x = !this.isGrounded ? 0.3 : 0;
@@ -567,7 +590,6 @@ export class Three25DScene {
       }
     }
 
-    // Hazard Collisions
     const playerBounds = new THREE.Box3().setFromObject(this.playerGroup);
     for (const hBox of this.hazardBoxes) {
       if (playerBounds.intersectsBox(hBox)) {
@@ -576,19 +598,16 @@ export class Three25DScene {
       }
     }
 
-    // Fall below level bounds check
     if (translation.y < -12) {
       this.handlePlayerDeath();
       return;
     }
 
-    // Exit Gateway Check
     if (playerBounds.intersectsBox(this.exitBox)) {
       this.handleLevelComplete();
       return;
     }
 
-    // Recording sampling
     if (this.recordingSystem.getIsRecording()) {
       this.recordingSystem.recordFrame(
         now,
@@ -609,11 +628,9 @@ export class Three25DScene {
     if (!this.playerGroup) return;
     const playerBounds = new THREE.Box3().setFromObject(this.playerGroup);
 
-    // 1. Pressure Plates Check
     for (const [, plate] of this.plates) {
       let isPressed = playerBounds.intersectsBox(plate.bounds);
 
-      // Check active echoes on plates
       for (const echo of this.activeEchoTimelines) {
         const echoBounds = new THREE.Box3().setFromObject(echo.characterGroup);
         if (echoBounds.intersectsBox(plate.bounds)) {
@@ -630,20 +647,17 @@ export class Three25DScene {
       }
     }
 
-    // 2. Timed Switches Countdown
     for (const [, sw] of this.switches) {
       if (sw.type === 'timed' && sw.isActive) {
         sw.timerRemaining -= dt;
         if (sw.timerRemaining <= 0) {
           sw.isActive = false;
-          (sw.beaconMesh.material as THREE.MeshStandardMaterial).emissive.setHex(0xd4a52c);
           sw.beaconLight.color.setHex(0xd4a52c);
           sound.playSwitch();
         }
       }
     }
 
-    // 3. Resolve Blast Doors & Synchronize Rapier Kinematic Bodies
     for (const [, door] of this.doors) {
       let shouldOpen = true;
 
@@ -666,13 +680,11 @@ export class Three25DScene {
         sound.playDoorOpen();
       }
 
-      // Smooth slide open
       const targetY = door.isOpen ? door.initialY + door.openOffsetY : door.initialY;
       const currentY = door.slidingSlab.position.y;
       const newY = currentY + (targetY - currentY) * 0.15;
       door.slidingSlab.position.y = newY;
 
-      // Update Kinematic RigidBody translation in Rapier
       const bodyPos = door.body.translation();
       door.body.setNextKinematicTranslation({
         x: bodyPos.x,
@@ -740,7 +752,6 @@ export class Three25DScene {
     if (!this.playerBody || !this.camera) return;
     const pos = this.playerBody.translation();
 
-    // Cinematic camera lerping horizontally along player X
     const targetCamX = pos.x * 0.75;
     const targetCamY = Math.max(4.0, pos.y * 0.5 + 4.0);
     this.camera.position.x += (targetCamX - this.camera.position.x) * 0.08;
@@ -772,7 +783,6 @@ export class Three25DScene {
     if (this.storedTracks.length === 0) return;
     const track = this.storedTracks[this.storedTracks.length - 1];
 
-    // Spawn 3D Spectral Echo Robot
     const { characterGroup } = SciFiAssetFactory.createHumanoidCharacter(true);
     const firstSample = track[0];
     characterGroup.position.set(firstSample.x, firstSample.y, 0);

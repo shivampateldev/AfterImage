@@ -30,3 +30,4 @@
    Player sprints toward the blast door and presses `E`. A spectral translucent clone appears, running along the recorded trajectory and flipping the switch in the past.
 5. **Door Opening & Escape:**  
    The mechanical door slab slides upward along hydraulic vertical tracks, dynamically lifting its Rapier kinematic collider. The player passes freely through into the exit portal to clear the sector and claim their XP reward.
+

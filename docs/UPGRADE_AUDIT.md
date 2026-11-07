@@ -81,3 +81,4 @@ The current repository represents the Stage 1 delivery of AFTERIMAGE:
 4. **Cross-Platform Packaging Architecture**:
    - Create `src/platform/` abstraction layer for web, Windows, and Android.
    - Configure electron / tauri / capacitor build pipelines and document platform build steps.
+

@@ -1,34 +1,37 @@
 # AFTERIMAGE – THE LAST ECHO
-> *"Your past self becomes your greatest teammate."*
+### AN SMP ORIGINAL
+> *"Your past self becomes your greatest teammate."*  
+> **Brand Philosophy:** *"1% CHANCE. 99% FAITH."*
 
-A 2D educational puzzle-platformer built with **TypeScript**, **Phaser 3**, **React 18**, **Tailwind CSS**, and **Framer Motion**.
+AFTERIMAGE is a production-quality, cross-platform **2.5D educational puzzle-platformer** set inside an abandoned temporal memory laboratory.
 
----
-
-## 1. Game Concept
-
-Set within an abandoned futuristic research facility where temporal memory experiments went catastrophically wrong, you possess the ability to record snapshots of your previous actions and manifest them as translucent **echoes**.
-
-Coordinate with your past selves to:
-- Depress heavy magnetic pressure plates.
-- Synchronize with fleeting capacitor switches.
-- Bypass electrified laser fields.
-- Coordinate multiple simultaneous timelines.
-- Escape the 9 chambers of the research complex.
-
-### Educational Pillar: "Learn to Earn"
-AFTERIMAGE contains **no advertisements, no forced video gates, no paid hints, and no artificial cooldown timers**. Instead, players can test and expand their computer science knowledge through **output prediction and algorithmic challenges** across **Python, JavaScript, C, C++, and Java** to earn bonus XP and unlock neural upgrades.
+Created and owned exclusively by **SMP**.
 
 ---
 
-## 2. Technology Stack
+## 1. Product Identity & SMP Integration
 
-- **Game Engine & Kinematics**: Phaser 3 (Arcade Physics, Canvas/WebGL rendering)
-- **UI & Presentation**: React 18, Tailwind CSS, Framer Motion, Lucide Icons
-- **Language**: TypeScript 5.7+ (Strict mode)
-- **Audio**: Web Audio API (Synthesized procedural futuristic SFX)
-- **Persistence**: LocalStorage with schema versioning and validation
-- **Build & Dev Tooling**: Vite 5, Vitest
+- **Brand Ownership:** AN SMP ORIGINAL
+- **Created by:** SMP
+- **Official Palette:** Metallic SMP Gold (`#D4A52C`), Deep Navy (`#090A0D`), Temporal Cyan (`#38D9FF`), Echo Violet (`#9875FF`).
+- **Cinematic Startup Sequence:** Animated SMP metallic emblem reveal, light sweep, tagline manifestation, and smooth transition to the 2.5D research complex.
+- **Dedicated About & Credits Screen:** Accessible from the main menu, displaying comprehensive SMP ownership attribution, game philosophies, and technology credits.
+- **Source Logo Placement:** Place the official SMP logo in `public/assets/branding/smp-logo.png`. The game includes an automatic procedural metallic gold vector fallback.
+
+---
+
+## 2. 2.5D Architecture & Technology Stack
+
+- **Rendering Engine:** **Three.js WebGL 2.5D Engine** (`src/game/engine/Three25DScene.ts`)
+  - Real 3D geometry with depth platforms, illuminated sensor pads, 3D animated security blast doors, dynamic point lights, and volumetric depth fog.
+  - Constrained 2.5D side-scrolling planar kinematics (player locomotion locked to the $XY$ plane at $Z = 0$).
+  - Smooth cinematic perspective camera ($45^\circ$ FOV at $Z = 28$).
+- **Application & UI:** **React 18**, **Tailwind CSS**, **Framer Motion**, and **Lucide Icons**.
+- **Physics & Collisions:** Deterministic 2.5D AABB collision detection and gravity simulation.
+- **Core Echo Mechanic:** Fixed-rate 60Hz transform recording with binary search timeline playback and linear interpolation.
+- **Educational System ("Learn to Earn"):** 52 validated questions across **Python**, **JavaScript**, **C**, **C++**, and **Java** with zero ads, zero paywalls, and anti-farming XP protection.
+- **Audio Engine:** Pure procedural futuristic sound effects synthesized via the **Web Audio API (`AudioContext`)**.
+- **Platform Layer:** Cross-platform abstraction in `src/platform/PlatformBridge.ts` supporting Web, Windows Desktop, and Android.
 
 ---
 
@@ -36,33 +39,29 @@ AFTERIMAGE contains **no advertisements, no forced video gates, no paid hints, a
 
 ### Prerequisites
 - Node.js `v18+` or `v20+` (Tested on Node v24)
-- `pnpm` or `npm`
+- `pnpm` (Recommended) or `npm`
 
 ### Installation
 ```bash
-# Install dependencies
 pnpm install
 ```
 
 ### Running Locally
 ```bash
-# Start Vite development server
 pnpm dev
 ```
-Open your browser at `http://localhost:3000`.
+Open `http://localhost:3000` in any modern web browser.
 
-### Running Unit Tests
+### Running Automated Tests
 ```bash
-# Run Vitest test suite
 pnpm test
 ```
 
 ### Building for Production
 ```bash
-# Run TypeScript type check and production bundle
 pnpm build
 ```
-The compiled output is output to `dist/`.
+Generates production-optimized static assets in `dist/`.
 
 ---
 
@@ -70,58 +69,45 @@ The compiled output is output to `dist/`.
 
 | Input Key | Mobile Touch Control | Action |
 |---|---|---|
-| **A / Left Arrow** | On-screen Left D-Pad | Move Left |
-| **D / Right Arrow** | On-screen Right D-Pad | Move Right |
-| **Space / Up Arrow / W** | Jump Button | Jump |
-| **R** | Record Button | Start / Stop Timeline Recording |
-| **E** | Echo Button | Summon / Replay Temporal Echo |
-| **ESC / Menu Button** | Menu Icon | Return to Operations Menu |
+| **A / Left Arrow** | Left D-Pad | Move Left |
+| **D / Right Arrow** | Right D-Pad | Move Right |
+| **Space / Up / W** | Jump Button | Jump |
+| **R** | Record Button | Start / Stop Movement Recording |
+| **E** | Echo Button | Summon / Replay Temporal Echo Clone |
+| **ESC / Menu Button** | Menu Icon | Open Settings / Return to Main Menu |
 
 ---
 
-## 5. Campaign Level Overview
+## 5. Campaign Sectors (All 9 Levels Playable)
 
-| Act | Sector | Name | Mechanics Introduced |
-|---|---|---|---|
-| **Act 1: The Awakening** | Sector 01 | First Signal | Kinematic locomotion and jump traversal |
-| | Sector 02 | A Second Self | Movement recording & echo playback |
-| | Sector 03 | Echoes of the Past | Pressure plates requiring sustained physical presence |
-| **Act 2: The Experiment** | Sector 04 | Locked Memories | Multi-tiered switch decomposition |
-| | Sector 05 | Temporal Alignment | Rapid capacitor switches with 5-second decay timers |
-| | Sector 06 | Broken Sequence | High-voltage laser fields and remote bridges |
-| **Act 3: The Collapse** | Sector 07 | Parallel Decisions | Dual-echo concurrency (2 simultaneous temporal clones) |
-| | Sector 08 | The Last Protocol | Compound puzzles combining lasers, timed triggers & doors |
-| | Sector 09 | The Last Echo | Final temporal core overload puzzle |
-
----
-
-## 6. How Systems Work
-
-### The Echo Mechanic
-When you press `R`, the `RecordingSystem` samples your kinematics at 60Hz:
-```ts
-{ timeOffset, x, y, vx, vy, flipX, animState, isInteracting }
-```
-When you summon an echo with `E`, the `EchoSystem` creates an ethereal clone that traverses along your sampled timeline using binary search interpolation, allowing deterministic recreation of movements.
-
-### Pressure Plates and Doors
-Pressure plates register overlap collisions for both the player and active echoes. When an echo steps on a plate, the linked security blast door opens smoothly via tweens, disabling its collision barrier.
-
-### Learn to Earn
-A collection of 52 verified programming challenges are stored in `src/data/questions.ts`. Players evaluate code output directly in the HUD or in the dedicated Neural Code Lab. XP is awarded once per challenge to prevent farming.
+- **Act 1: The Awakening**
+  - *Sector 01: First Signal* (Kinematic locomotion & spatial jumps)
+  - *Sector 02: A Second Self* (Movement recording & temporal replay)
+  - *Sector 03: Echoes of the Past* (Pressure plate coordination)
+- **Act 2: The Experiment**
+  - *Sector 04: Locked Memories* (Multi-tiered puzzle decomposition)
+  - *Sector 05: Temporal Alignment* (Timed capacitor switches with 5s decay)
+  - *Sector 06: Broken Sequence* (Lethal laser field bypass)
+- **Act 3: The Collapse**
+  - *Sector 07: Parallel Decisions* (Dual simultaneous echo deployment)
+  - *Sector 08: The Last Protocol* (Synchronized compound locks)
+  - *Sector 09: The Last Echo* (Triple-core overload facility escape)
 
 ---
 
-## 7. Project Documentation
+## 6. Comprehensive Technical Documentation
 
-Comprehensive technical documentation is provided in the `docs/` folder:
-- **[`docs/CODE_MAP.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/CODE_MAP.md)**: Detailed dependency matrix, file call graph, and FAQ.
-- **[`docs/ARCHITECTURE.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/ARCHITECTURE.md)**: System design and architectural decisions.
-- **[`docs/DATA_FLOW.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/DATA_FLOW.md)**: Sequence diagrams and data persistence flows.
+All project architecture, engineering decisions, and quality audits are documented:
+- **[`docs/UPGRADE_AUDIT.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/UPGRADE_AUDIT.md)**: Repository audit, baseline assessment, and migration strategy.
+- **[`docs/CODE_MAP.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/CODE_MAP.md)**: File-by-file dependency matrix and architectural answers.
+- **[`docs/3D_GRAPHICS.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/3D_GRAPHICS.md)**: 2.5D rendering principles, lighting, materials, and camera dynamics.
+- **[`docs/PLATFORM_DISTRIBUTION.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/PLATFORM_DISTRIBUTION.md)**: Packaging guides for Web, Windows Desktop, and Android.
+- **[`docs/TESTING.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/TESTING.md)**: QA validation and test execution results.
+- **[`docs/ASSET_CREDITS.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/ASSET_CREDITS.md)**: Third-party open source licenses and SMP attribution.
 
 ---
 
-## 8. License
+## 7. Official Copyright Notice
 
-MIT License. Designed and developed for educational mastery and temporal puzzle adventure.
-
+© 2026 SMP. All Rights Reserved.  
+*AN SMP ORIGINAL* • *"1% CHANCE. 99% FAITH."*

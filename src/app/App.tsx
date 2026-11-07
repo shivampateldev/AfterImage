@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { MainMenu } from '../components/menus/MainMenu';
-import { GameCanvas } from '../components/game/GameCanvas';
+import { Game25DCanvas } from '../components/game/Game25DCanvas';
 import { GameplayHUD } from '../components/hud/GameplayHUD';
 import { LevelCompletionModal } from '../components/hud/LevelCompletionModal';
 import { LearningHub } from '../components/menus/LearningHub';
 import { AchievementsModal } from '../components/menus/AchievementsModal';
 import { StatisticsModal } from '../components/menus/StatisticsModal';
+import { SettingsModal } from '../components/menus/SettingsModal';
+import { AboutSMPModal } from '../components/menus/AboutSMPModal';
+import { SMPSplashScreen } from '../components/branding/SMPSplashScreen';
 import { gameEvents, EVENTS } from '../game/events/GameEventBus';
 import { CAMPAIGN_LEVELS } from '../data/levels';
 
-type AppScreen = 'menu' | 'gameplay';
+type AppScreen = 'splash' | 'menu' | 'gameplay';
 
 export const App: React.FC = () => {
-  const [screen, setScreen] = useState<AppScreen>('menu');
+  const [screen, setScreen] = useState<AppScreen>(() => {
+    // Check if intro has been viewed in this session
+    const seen = sessionStorage.getItem('afterimage_intro_viewed');
+    return seen ? 'menu' : 'splash';
+  });
+
   const [currentLevelId, setCurrentLevelId] = useState<number>(1);
   const [isLevelCleared, setIsLevelCleared] = useState<boolean>(false);
   const [clearedLevelData, setClearedLevelData] = useState<{
@@ -26,6 +34,8 @@ export const App: React.FC = () => {
   const [showLearningHub, setShowLearningHub] = useState<boolean>(false);
   const [showAchievements, setShowAchievements] = useState<boolean>(false);
   const [showStats, setShowStats] = useState<boolean>(false);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showAboutSMP, setShowAboutSMP] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubLevelComplete = gameEvents.on(EVENTS.LEVEL_COMPLETED, (data) => {
@@ -37,6 +47,11 @@ export const App: React.FC = () => {
       unsubLevelComplete();
     };
   }, []);
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem('afterimage_intro_viewed', 'true');
+    setScreen('menu');
+  };
 
   const handleStartGame = (levelId: number) => {
     setCurrentLevelId(levelId);
@@ -57,19 +72,25 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen relative bg-facility-950 text-slate-100 overflow-hidden font-sans select-none">
+    <div className="w-screen h-screen relative bg-[#07090e] text-slate-100 overflow-hidden font-sans select-none">
+      {screen === 'splash' && (
+        <SMPSplashScreen onComplete={handleSplashComplete} />
+      )}
+
       {screen === 'menu' && (
         <MainMenu
           onStartGame={handleStartGame}
           onOpenLearningHub={() => setShowLearningHub(true)}
           onOpenAchievements={() => setShowAchievements(true)}
           onOpenStats={() => setShowStats(true)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenAboutSMP={() => setShowAboutSMP(true)}
         />
       )}
 
       {screen === 'gameplay' && (
         <div className="relative w-full h-full flex flex-col justify-center items-center">
-          <GameCanvas currentLevelId={currentLevelId} />
+          <Game25DCanvas currentLevelId={currentLevelId} />
           
           <GameplayHUD
             currentLevelId={currentLevelId}
@@ -104,8 +125,15 @@ export const App: React.FC = () => {
       {showStats && (
         <StatisticsModal onClose={() => setShowStats(false)} />
       )}
+
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
+
+      {showAboutSMP && (
+        <AboutSMPModal onClose={() => setShowAboutSMP(false)} />
+      )}
     </div>
   );
 };
 export default App;
-

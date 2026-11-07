@@ -10,7 +10,7 @@ import { gameEvents, EVENTS } from '../events/GameEventBus';
 import { sound } from '../../services/audio/AudioService';
 
 export class MainGameScene extends Phaser.Scene {
-  private currentLevelIndex: number = 1;
+  private currentLevelIndex: number = 2;
   private currentLevelConfig!: LevelConfig;
   private player!: PlayerController;
   private recordingSystem!: RecordingSystem;
@@ -25,6 +25,10 @@ export class MainGameScene extends Phaser.Scene {
   private hintsUsedCount: number = 0;
   private unsubscribers: Array<() => void> = [];
 
+  // Parallax layers
+  private bgSky!: Phaser.GameObjects.TileSprite;
+  private bgFacility!: Phaser.GameObjects.TileSprite;
+
   constructor() {
     super({ key: 'MainGameScene' });
   }
@@ -36,17 +40,26 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   public preload(): void {
-    // Generate procedural assets using canvas graphics
     AssetGenerator.generateProceduralTextures(this);
   }
 
   public create(): void {
-    this.cameras.main.setBackgroundColor('#07090e');
-    this.createAtmosphericBackground();
+    this.cameras.main.setBackgroundColor('#090e17');
 
+    // 1. Create Parallax Background Layers
+    this.bgSky = this.add.tileSprite(480, 300, 960, 600, 'bg_sky_mountains');
+    this.bgSky.setScrollFactor(0);
+    this.bgSky.setDepth(1);
+
+    this.bgFacility = this.add.tileSprite(480, 300, 960, 600, 'bg_facility_wall');
+    this.bgFacility.setScrollFactor(0.2);
+    this.bgFacility.setDepth(2);
+
+    // 2. Physics Groups
     this.platformsGroup = this.physics.add.staticGroup();
     this.hazardsGroup = this.physics.add.staticGroup();
 
+    // 3. Systems
     this.recordingSystem = new RecordingSystem();
     this.echoSystem = new EchoSystem(this);
     this.puzzleSystem = new PuzzleSystem(this);
@@ -55,35 +68,9 @@ export class MainGameScene extends Phaser.Scene {
     this.loadLevel(this.currentLevelIndex);
   }
 
-  private createAtmosphericBackground(): void {
-    // Futuristic gridlines and ambient lighting
-    const g = this.add.graphics();
-    g.lineStyle(1, 0x141d30, 0.4);
-    for (let x = 0; x < 960; x += 40) {
-      g.moveTo(x, 0);
-      g.lineTo(x, 600);
-    }
-    for (let y = 0; y < 600; y += 40) {
-      g.moveTo(0, y);
-      g.lineTo(960, y);
-    }
-    g.strokePath();
-
-    // Ambient glow accents
-    const ambient1 = this.add.circle(200, 150, 180, 0x0066ff, 0.05);
-    const ambient2 = this.add.circle(750, 350, 220, 0xb347ff, 0.04);
-    this.tweens.add({
-      targets: [ambient1, ambient2],
-      alpha: 0.1,
-      duration: 4000,
-      yoyo: true,
-      repeat: -1,
-    });
-  }
-
   public loadLevel(levelId: number): void {
     this.currentLevelIndex = levelId;
-    const config = CAMPAIGN_LEVELS.find(l => l.id === levelId) || CAMPAIGN_LEVELS[0];
+    const config = CAMPAIGN_LEVELS.find(l => l.id === levelId) || CAMPAIGN_LEVELS[1];
     this.currentLevelConfig = config;
     this.isLevelComplete = false;
     this.levelStartTime = performance.now();
@@ -92,63 +79,76 @@ export class MainGameScene extends Phaser.Scene {
     // Reset systems
     this.echoSystem.resetStoredTracks();
     this.echoSystem.setMaxActiveEchoes(config.maxActiveEchoes);
-    this.recordingSystem.stopRecording();
+    this.recordingSystem.reset();
 
-    // Clear static platforms and hazards
+    // Clear previous platforms
     this.platformsGroup.clear(true, true);
     this.hazardsGroup.clear(true, true);
     if (this.exitPortal) this.exitPortal.destroy();
 
-    // Build Level Geometry
+    // 1. Spawn Botanical Ancient Trees (Midground Depth: 5)
+    const tree1 = this.add.sprite(180, 320, 'pixel_tree_ancient');
+    tree1.setDepth(5);
+    tree1.setScale(1.1);
+
+    const tree2 = this.add.sprite(820, 320, 'pixel_tree_ancient');
+    tree2.setDepth(5);
+    tree2.setScale(0.95);
+
+    // 2. Build Industrial Concrete Platforms
     for (const p of config.platforms) {
       const tileWidth = 32;
       const count = Math.ceil(p.width / tileWidth);
+
       for (let i = 0; i < count; i++) {
         const x = p.x + i * tileWidth + tileWidth / 2;
         const y = p.y + p.height / 2;
         const tile = this.platformsGroup.create(x, y, 'facility_tile');
         tile.setDisplaySize(tileWidth, p.height);
+        tile.setDepth(10);
         tile.refreshBody();
       }
     }
 
-    // Build Hazards
+    // 3. Build Hazard Lasers
     if (config.hazards) {
       for (const h of config.hazards) {
-        const hazard = this.hazardsGroup.create(h.x + h.width / 2, h.y + h.height / 2, 'hazard_laser');
-        hazard.setDisplaySize(h.width, h.height);
-        hazard.refreshBody();
+        const laser = this.hazardsGroup.create(h.x + h.width / 2, h.y + h.height / 2, 'laser_grid');
+        laser.setDisplaySize(h.width, h.height);
+        laser.setDepth(12);
+        laser.refreshBody();
       }
     }
 
-    // Build Puzzles
+    // 4. Initialize Blast Gates, Pressure Plates & Switches
     this.puzzleSystem.initialize(config);
 
-    // Setup Exit Portal
-    this.exitPortal = this.add.sprite(config.exitPoint.x, config.exitPoint.y, 'exit_portal');
-    this.physics.add.existing(this.exitPortal, true);
+    // 5. Exit Portal Gateway
+    this.exitPortal = this.add.sprite(config.exitPoint.x, config.exitPoint.y - 10, 'exit_portal');
+    this.exitPortal.setDisplaySize(48, 72);
+    this.exitPortal.setDepth(11);
 
-    // Setup Player
-    if (!this.player) {
-      this.player = new PlayerController(this, config.spawnPoint.x, config.spawnPoint.y);
-    } else {
-      this.player.setPosition(config.spawnPoint.x, config.spawnPoint.y);
+    // 6. Spawn Player Explorer Character
+    if (this.player && this.player.sprite) {
+      this.player.sprite.destroy();
+    }
+    this.player = new PlayerController(this, config.spawnPoint.x, config.spawnPoint.y);
+    this.player.sprite.setDepth(20);
+
+    // Platform Collisions
+    this.physics.add.collider(this.player.sprite, this.platformsGroup);
+
+    // Blast Door Solid Colliders
+    for (const doorSprite of this.puzzleSystem.getDoorsGroup()) {
+      this.physics.add.collider(this.player.sprite, doorSprite);
     }
 
-    // Collisions
-    this.physics.add.collider(this.player.sprite, this.platformsGroup);
-    this.physics.add.collider(this.player.sprite, this.puzzleSystem.getDoorSprites());
-
-    // Hazard overlap
+    // Hazards
     this.physics.add.overlap(this.player.sprite, this.hazardsGroup, () => {
       this.handlePlayerDeath();
     });
 
-    // Exit portal overlap
-    this.physics.add.overlap(this.player.sprite, this.exitPortal, () => {
-      this.handleLevelComplete();
-    });
-
+    // Notify UI
     gameEvents.emit(EVENTS.LEVEL_LOADED, {
       levelId: config.id,
       title: config.title,
@@ -161,98 +161,64 @@ export class MainGameScene extends Phaser.Scene {
     });
   }
 
-  private handlePlayerDeath(): void {
-    if (this.isLevelComplete) return;
-    sound.playSwitch();
-    // Screen shake
-    this.cameras.main.shake(200, 0.02);
-    this.player.setPosition(this.currentLevelConfig.spawnPoint.x, this.currentLevelConfig.spawnPoint.y);
-    gameEvents.emit(EVENTS.PLAYER_DIED, { levelId: this.currentLevelIndex });
-  }
+  public update(time: number, delta: number): void {
+    if (this.isLevelComplete || !this.player || !this.player.sprite.body) return;
 
-  private handleLevelComplete(): void {
-    if (this.isLevelComplete) return;
-    this.isLevelComplete = true;
+    // 1. Update Player Controls & Kinematics
+    const movement = this.player.update(delta);
 
-    sound.playLevelSuccess();
-    const durationSeconds = (performance.now() - this.levelStartTime) / 1000;
+    // 2. Parallax camera scroll
+    this.bgSky.tilePositionX = this.player.sprite.x * 0.05;
+    this.bgFacility.tilePositionX = this.player.sprite.x * 0.15;
 
-    gameEvents.emit(EVENTS.LEVEL_COMPLETED, {
-      levelId: this.currentLevelIndex,
-      completionTimeSeconds: Math.round(durationSeconds),
-      hintsUsed: this.hintsUsedCount,
-      reflectionQuestion: this.currentLevelConfig.reflectionQuestion,
-    });
-  }
+    // 3. Update Echoes
+    const { activeEchoes, interactingEchoes } = this.echoSystem.update(time);
 
-  public update(_time: number, delta: number): void {
-    if (this.isLevelComplete || !this.player) return;
-
-    const deltaSeconds = delta / 1000;
-    const now = performance.now();
-
-    // 1. Update player locomotion
-    const moveState = this.player.update();
-
-    // 2. Check manual interactions
-    if (moveState.isInteracting) {
-      this.puzzleSystem.tryInteractSwitch(this.player.sprite);
+    // Check echo interactions with switches
+    for (const echoSprite of interactingEchoes) {
+      this.puzzleSystem.handleInteraction(echoSprite);
     }
 
-    // 3. Record sample if active
+    // 4. Check Puzzle Occupancy (Pressure plates & doors)
+    this.puzzleSystem.checkCollisions(this.player.sprite, activeEchoes, delta / 1000);
+
+    // 5. Handle Player Manual Switch Interaction (Key F)
+    if (movement.isInteracting) {
+      this.puzzleSystem.handleInteraction(this.player.sprite);
+    }
+
+    // 6. Record frame if recording active
     if (this.recordingSystem.getIsRecording()) {
       this.recordingSystem.recordFrame(
-        now,
+        time,
         this.player.sprite.x,
         this.player.sprite.y,
-        moveState.vx,
-        moveState.vy,
-        moveState.flipX,
-        moveState.animState,
-        moveState.isInteracting
+        movement.vx,
+        movement.vy,
+        movement.flipX,
+        movement.animState,
+        movement.isInteracting
       );
     }
 
-    // 4. Update echoes playback
-    this.echoSystem.update(now);
+    // 7. Check Level Exit Reached
+    const distToExit = Phaser.Math.Distance.Between(
+      this.player.sprite.x,
+      this.player.sprite.y,
+      this.currentLevelConfig.exitPoint.x,
+      this.currentLevelConfig.exitPoint.y
+    );
+    if (distToExit < 38) {
+      this.handleLevelComplete();
+    }
 
-    // 5. Update puzzles and sensor collisions with echoes
-    const echoSprites = this.echoSystem.getActiveSprites();
-    this.puzzleSystem.checkCollisions(this.player.sprite, echoSprites, deltaSeconds);
-
-    // Echoes interacting with switches
-    for (const echo of echoSprites) {
-      this.puzzleSystem.tryInteractSwitch(echo);
+    // 8. Pit fall check
+    if (this.player.sprite.y > 650) {
+      this.handlePlayerDeath();
     }
   }
 
-  private setupEventListeners(): void {
-    // Clean old listeners
-    this.unsubscribers.forEach(u => u());
-    this.unsubscribers = [];
-
-    // Keyboard shortcuts (R & E)
-    this.input.keyboard?.on('keydown-R', () => {
-      this.toggleRecording();
-    });
-
-    this.input.keyboard?.on('keydown-E', () => {
-      this.triggerReplayEcho();
-    });
-
-    // Listen to UI controls
-    this.unsubscribers.push(
-      gameEvents.on(EVENTS.TRIGGER_RECORD, () => this.toggleRecording()),
-      gameEvents.on(EVENTS.TRIGGER_REPLAY, () => this.triggerReplayEcho()),
-      gameEvents.on(EVENTS.TRIGGER_RESTART, () => this.loadLevel(this.currentLevelIndex)),
-      gameEvents.on(EVENTS.SET_CURRENT_LEVEL, (data) => {
-        const lvl = (data as { levelId: number })?.levelId || 1;
-        this.loadLevel(lvl);
-      })
-    );
-  }
-
-  private toggleRecording(): void {
+  public toggleRecording(): void {
     if (this.recordingSystem.getIsRecording()) {
       const samples = this.recordingSystem.stopRecording();
       if (samples.length > 0) {
@@ -263,8 +229,7 @@ export class MainGameScene extends Phaser.Scene {
     }
   }
 
-  private triggerReplayEcho(): void {
-    // If user presses replay while recording, finalize the recording first
+  public triggerReplayEcho(): void {
     if (this.recordingSystem.getIsRecording()) {
       const samples = this.recordingSystem.stopRecording();
       if (samples.length > 0) {
@@ -274,13 +239,41 @@ export class MainGameScene extends Phaser.Scene {
     this.echoSystem.spawnEchoFromLastRecording();
   }
 
-  public getPlayerController(): PlayerController {
-    return this.player;
+  private handlePlayerDeath(): void {
+    if (this.isLevelComplete) return;
+    sound.playSwitch();
+    this.loadLevel(this.currentLevelIndex);
   }
 
-  public shutdown(): void {
+  private handleLevelComplete(): void {
+    if (this.isLevelComplete) return;
+    this.isLevelComplete = true;
+    sound.playLevelSuccess();
+
+    const elapsed = Math.round((performance.now() - this.levelStartTime) / 1000);
+    gameEvents.emit(EVENTS.LEVEL_COMPLETED, {
+      levelId: this.currentLevelConfig.id,
+      completionTimeSeconds: elapsed,
+      hintsUsed: this.hintsUsedCount,
+      reflectionQuestion: this.currentLevelConfig.reflectionQuestion,
+    });
+  }
+
+  private setupEventListeners(): void {
+    this.unsubscribers.push(
+      gameEvents.on(EVENTS.TRIGGER_RECORD, () => this.toggleRecording()),
+      gameEvents.on(EVENTS.TRIGGER_REPLAY, () => this.triggerReplayEcho()),
+      gameEvents.on(EVENTS.TRIGGER_RESTART, () => this.loadLevel(this.currentLevelIndex)),
+      gameEvents.on(EVENTS.SET_CURRENT_LEVEL, (data) => {
+        const payload = data as { levelId: number };
+        this.loadLevel(payload.levelId);
+      })
+    );
+  }
+
+  public destroyScene(): void {
     this.unsubscribers.forEach(u => u());
+    this.unsubscribers = [];
     this.puzzleSystem.cleanup();
-    this.echoSystem.clearAllEchoes();
   }
 }

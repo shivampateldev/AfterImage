@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { LevelConfig } from '../../types';
-import { gameEvents, EVENTS } from '../events/GameEventBus';
 import { sound } from '../../services/audio/AudioService';
 
 export interface PuzzleDoor {
   id: string;
-  sprite: Phaser.Physics.Arcade.Sprite;
+  frameSprite: Phaser.GameObjects.Sprite;
+  slabSprite: Phaser.Physics.Arcade.Sprite;
   initialX: number;
   initialY: number;
   openOffset: { x: number; y: number };
@@ -47,19 +47,30 @@ export class PuzzleSystem {
   public initialize(config: LevelConfig): void {
     this.cleanup();
 
-    // 1. Setup Doors
+    // 1. Setup Industrial Blast Doors
     for (const d of config.doors) {
       const openOffset = d.openOffset || { x: 0, y: -120 };
-      const doorSprite = this.scene.physics.add.sprite(d.x + d.width / 2, d.y + d.height / 2, 'door_texture');
-      doorSprite.setDisplaySize(d.width, d.height);
-      (doorSprite.body as Phaser.Physics.Arcade.Body).setImmovable(true);
-      (doorSprite.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+
+      // Outer Reinforced Frame
+      const frameSprite = this.scene.add.sprite(d.x + d.width / 2, d.y + d.height / 2, 'gate_frame');
+      frameSprite.setDisplaySize(d.width + 36, d.height + 20);
+      frameSprite.setDepth(15);
+
+      // Solid Armored Sliding Slab (with physical collider)
+      const slabSprite = this.scene.physics.add.sprite(d.x + d.width / 2, d.y + d.height / 2, 'door_slab');
+      slabSprite.setDisplaySize(d.width + 4, d.height);
+      slabSprite.setDepth(12);
+
+      const slabBody = slabSprite.body as Phaser.Physics.Arcade.Body;
+      slabBody.setImmovable(true);
+      slabBody.setAllowGravity(false);
 
       this.doors.set(d.id, {
         id: d.id,
-        sprite: doorSprite,
-        initialX: doorSprite.x,
-        initialY: doorSprite.y,
+        frameSprite,
+        slabSprite,
+        initialX: slabSprite.x,
+        initialY: slabSprite.y,
         openOffset,
         isOpen: false,
         reqPlateIds: [],
@@ -71,8 +82,9 @@ export class PuzzleSystem {
     for (const p of config.pressurePlates) {
       const plateSprite = this.scene.add.sprite(p.x + p.width / 2, p.y + p.height / 2, 'plate_inactive');
       plateSprite.setDisplaySize(p.width, p.height);
+      plateSprite.setDepth(10);
 
-      const zone = this.scene.add.zone(p.x + p.width / 2, p.y + p.height / 2, p.width, p.height + 8);
+      const zone = this.scene.add.zone(p.x + p.width / 2, p.y + p.height / 2, p.width, p.height + 10);
       this.scene.physics.add.existing(zone, true);
 
       this.plates.set(p.id, {
@@ -89,10 +101,13 @@ export class PuzzleSystem {
       }
     }
 
-    // 3. Setup Switches
+    // 3. Setup Wall Switch Consoles
     for (const sw of config.switches) {
       const switchSprite = this.scene.add.sprite(sw.x, sw.y, 'switch_off');
-      const zone = this.scene.add.zone(sw.x, sw.y, 32, 40);
+      switchSprite.setDisplaySize(28, 40);
+      switchSprite.setDepth(10);
+
+      const zone = this.scene.add.zone(sw.x, sw.y, 44, 50);
       this.scene.physics.add.existing(zone, true);
 
       this.switches.set(sw.id, {
@@ -117,7 +132,7 @@ export class PuzzleSystem {
     echoSprites: Phaser.Physics.Arcade.Sprite[],
     deltaSeconds: number
   ): void {
-    // 1. Pressure Plates Check
+    // 1. Automatic Pressure Plate Occupancy
     for (const [, plate] of this.plates) {
       let isOccupied = false;
 
@@ -126,7 +141,7 @@ export class PuzzleSystem {
         isOccupied = true;
       }
 
-      // Check echoes overlap
+      // Check temporal echo overlap
       for (const echo of echoSprites) {
         if (echo && echo.active && this.scene.physics.overlap(echo, plate.zone)) {
           isOccupied = true;
@@ -138,106 +153,84 @@ export class PuzzleSystem {
         plate.isPressed = isOccupied;
         plate.sprite.setTexture(isOccupied ? 'plate_active' : 'plate_inactive');
         if (isOccupied) sound.playSwitch();
-        gameEvents.emit(EVENTS.PLATE_TRIGGERED, { plateId: plate.id, isPressed: isOccupied });
       }
     }
 
-    // 2. Timed switches countdown
+    // 2. Timed Switches countdown
     for (const [, sw] of this.switches) {
       if (sw.type === 'timed' && sw.isActive) {
         sw.timerRemaining -= deltaSeconds;
         if (sw.timerRemaining <= 0) {
           sw.isActive = false;
-          sw.timerRemaining = 0;
           sw.sprite.setTexture('switch_off');
           sound.playSwitch();
-          gameEvents.emit(EVENTS.SWITCH_TOGGLED, { switchId: sw.id, isActive: false });
         }
       }
     }
 
-    // 3. Resolve Door States
+    // 3. Sliding Blast Door Updates
     for (const [, door] of this.doors) {
       let shouldOpen = true;
 
-      // Must have all required plates pressed
       for (const plateId of door.reqPlateIds) {
-        const plate = this.plates.get(plateId);
-        if (!plate || !plate.isPressed) {
+        if (!this.plates.get(plateId)?.isPressed) {
           shouldOpen = false;
           break;
         }
       }
 
-      // Must have all required switches active
-      for (const switchId of door.reqSwitchIds) {
-        const sw = this.switches.get(switchId);
-        if (!sw || !sw.isActive) {
+      for (const swId of door.reqSwitchIds) {
+        if (!this.switches.get(swId)?.isActive) {
           shouldOpen = false;
           break;
         }
-      }
-
-      // If door has neither requirement, remain as configured
-      if (door.reqPlateIds.length === 0 && door.reqSwitchIds.length === 0) {
-        shouldOpen = door.isOpen;
       }
 
       if (shouldOpen !== door.isOpen) {
-        this.setDoorState(door, shouldOpen);
+        door.isOpen = shouldOpen;
+        sound.playDoorOpen();
       }
+
+      // Smooth vertical sliding translation
+      const targetY = door.isOpen ? door.initialY + door.openOffset.y : door.initialY;
+      const currentY = door.slabSprite.y;
+      const newY = currentY + (targetY - currentY) * 0.18;
+      door.slabSprite.setY(newY);
+
+      // Disable physics collider body when door is raised open
+      (door.slabSprite.body as Phaser.Physics.Arcade.Body).enable = !door.isOpen;
     }
   }
 
-  public tryInteractSwitch(interactor: Phaser.GameObjects.GameObject): boolean {
+  public handleInteraction(actorSprite: Phaser.Physics.Arcade.Sprite): boolean {
     for (const [, sw] of this.switches) {
-      if (this.scene.physics.overlap(interactor, sw.zone)) {
+      if (this.scene.physics.overlap(actorSprite, sw.zone)) {
         if (sw.type === 'toggle') {
           sw.isActive = !sw.isActive;
-        } else if (sw.type === 'timed') {
+        } else {
           sw.isActive = true;
           sw.timerRemaining = sw.durationSeconds;
         }
+
         sw.sprite.setTexture(sw.isActive ? 'switch_on' : 'switch_off');
         sound.playSwitch();
-        gameEvents.emit(EVENTS.SWITCH_TOGGLED, { switchId: sw.id, isActive: sw.isActive });
         return true;
       }
     }
     return false;
   }
 
-  private setDoorState(door: PuzzleDoor, open: boolean): void {
-    door.isOpen = open;
-    sound.playDoorOpen();
-
-    const targetX = open ? door.initialX + door.openOffset.x : door.initialX;
-    const targetY = open ? door.initialY + door.openOffset.y : door.initialY;
-
-    this.scene.tweens.add({
-      targets: door.sprite,
-      x: targetX,
-      y: targetY,
-      duration: 350,
-      ease: 'Power2',
-      onComplete: () => {
-        // Toggle solid collision body based on open state
-        (door.sprite.body as Phaser.Physics.Arcade.Body).enable = !open;
-      }
-    });
-
-    if (open) {
-      (door.sprite.body as Phaser.Physics.Arcade.Body).enable = false;
-    }
-
-    gameEvents.emit(EVENTS.DOOR_STATE_CHANGED, { doorId: door.id, isOpen: open });
-  }
-
-  public getDoorSprites(): Phaser.Physics.Arcade.Sprite[] {
-    return Array.from(this.doors.values()).map(d => d.sprite);
+  public getDoorsGroup(): Phaser.Physics.Arcade.Sprite[] {
+    return Array.from(this.doors.values()).map(d => d.slabSprite);
   }
 
   public cleanup(): void {
+    this.doors.forEach(d => {
+      d.frameSprite.destroy();
+      d.slabSprite.destroy();
+    });
+    this.doors.clear();
+
     this.plates.forEach(p => {
       p.sprite.destroy();
       p.zone.destroy();
@@ -249,10 +242,5 @@ export class PuzzleSystem {
       s.zone.destroy();
     });
     this.switches.clear();
-
-    this.doors.forEach(d => {
-      d.sprite.destroy();
-    });
-    this.doors.clear();
   }
 }

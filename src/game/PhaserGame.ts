@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MainGameScene } from './scenes/MainGameScene';
 
-export function createPhaserGame(parentContainerId: string, levelId: number = 1): Phaser.Game {
+export function createPhaserGame(parentContainerId: string, levelId: number = 2): Phaser.Game {
   const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
     parent: parentContainerId,
@@ -19,18 +19,16 @@ export function createPhaserGame(parentContainerId: string, levelId: number = 1)
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     render: {
-      pixelArt: false,
-      antialias: true,
+      pixelArt: true, // Integer nearest-neighbor crisp pixel scaling
+      antialias: false,
+      roundPixels: true,
     },
-    backgroundColor: '#07090e',
+    backgroundColor: '#090e17',
     scene: [MainGameScene],
   };
 
   const game = new Phaser.Game(config);
-
-  // Pass initial level
   game.scene.start('MainGameScene', { levelId });
 
   return game;
 }
-

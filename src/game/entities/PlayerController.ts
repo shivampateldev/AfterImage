@@ -12,26 +12,32 @@ export class PlayerController {
     space: Phaser.Input.Keyboard.Key;
     r: Phaser.Input.Keyboard.Key;
     e: Phaser.Input.Keyboard.Key;
+    f: Phaser.Input.Keyboard.Key;
   };
 
   private readonly MOVE_SPEED = 240;
-  private readonly JUMP_VELOCITY = -440;
+  private readonly JUMP_VELOCITY = -450;
   private isInteractingRequested = false;
 
-  // Virtual inputs for mobile touch controls
+  // Coyote time & jump buffering
+  private coyoteTimer = 0;
+  private jumpBufferTimer = 0;
+
+  // Virtual inputs for touch/mobile
   public virtualLeft = false;
   public virtualRight = false;
   public virtualJump = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    this.sprite = scene.physics.add.sprite(x, y, 'player_idle');
+    // 32x48 pixel art sprite
+    this.sprite = scene.physics.add.sprite(x, y, 'player_sheet', 0);
     this.sprite.setCollideWorldBounds(true);
-    this.sprite.setBounce(0.02);
+    this.sprite.setBounce(0.0);
 
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    body.setSize(24, 44);
-    body.setOffset(4, 4);
-    body.setGravityY(850);
+    body.setSize(20, 42);
+    body.setOffset(6, 6);
+    body.setGravityY(980);
 
     if (scene.input.keyboard) {
       this.cursors = scene.input.keyboard.createCursorKeys();
@@ -43,11 +49,14 @@ export class PlayerController {
         space: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
         r: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R),
         e: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E),
+        f: scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F),
       };
     }
+
+    this.sprite.play('player_idle_anim');
   }
 
-  public update(): {
+  public update(delta: number): {
     vx: number;
     vy: number;
     flipX: boolean;
@@ -55,29 +64,61 @@ export class PlayerController {
     isInteracting: boolean;
   } {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    const dt = delta / 1000;
+
     const left = this.cursors?.left.isDown || this.wasdKeys?.left.isDown || this.virtualLeft;
     const right = this.cursors?.right.isDown || this.wasdKeys?.right.isDown || this.virtualRight;
-    const jump = this.cursors?.up.isDown || this.wasdKeys?.space.isDown || this.wasdKeys?.up.isDown || this.virtualJump;
+    const jumpPressed = Phaser.Input.Keyboard.JustDown(this.cursors?.up) ||
+                        Phaser.Input.Keyboard.JustDown(this.wasdKeys?.space) ||
+                        Phaser.Input.Keyboard.JustDown(this.wasdKeys?.up) ||
+                        this.virtualJump;
 
-    // Horizontal movement
+    if (Phaser.Input.Keyboard.JustDown(this.wasdKeys?.f)) {
+      this.isInteractingRequested = true;
+    }
+
+    const onFloor = body.blocked.down || body.touching.down;
+    if (onFloor) {
+      this.coyoteTimer = 0.1;
+    } else {
+      this.coyoteTimer -= dt;
+    }
+
+    if (jumpPressed) {
+      this.jumpBufferTimer = 0.12;
+    } else {
+      this.jumpBufferTimer -= dt;
+    }
+
+    // Horizontal Locomotion
     if (left) {
       body.setVelocityX(-this.MOVE_SPEED);
       this.sprite.setFlipX(true);
+      if (onFloor && this.sprite.anims.currentAnim?.key !== 'player_run_anim') {
+        this.sprite.play('player_run_anim');
+      }
     } else if (right) {
       body.setVelocityX(this.MOVE_SPEED);
       this.sprite.setFlipX(false);
+      if (onFloor && this.sprite.anims.currentAnim?.key !== 'player_run_anim') {
+        this.sprite.play('player_run_anim');
+      }
     } else {
       body.setVelocityX(0);
+      if (onFloor && this.sprite.anims.currentAnim?.key !== 'player_idle_anim') {
+        this.sprite.play('player_idle_anim');
+      }
     }
 
-    // Jump
-    const onFloor = body.blocked.down || body.touching.down;
-    if (jump && onFloor) {
+    // Jumping execution
+    if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0) {
       body.setVelocityY(this.JUMP_VELOCITY);
+      this.coyoteTimer = 0;
+      this.jumpBufferTimer = 0;
+      this.sprite.play('player_jump_anim');
       sound.playJump();
     }
 
-    // Animation state
     let animState: 'idle' | 'run' | 'jump' | 'fall' = 'idle';
     if (!onFloor) {
       animState = body.velocity.y < 0 ? 'jump' : 'fall';
@@ -100,14 +141,4 @@ export class PlayerController {
   public requestInteraction(): void {
     this.isInteractingRequested = true;
   }
-
-  public setPosition(x: number, y: number): void {
-    this.sprite.setPosition(x, y);
-    (this.sprite.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
-  }
-
-  public destroy(): void {
-    this.sprite.destroy();
-  }
 }
-

@@ -36,7 +36,10 @@ async function runValidation() {
   const pageErrors = [];
 
   page.on('console', msg => consoleLogs.push(`[${msg.type()}] ${msg.text()}`));
-  page.on('pageerror', err => pageErrors.push(err.toString()));
+  page.on('pageerror', err => {
+    console.error('Captured page error in Chrome:', err.stack || err.toString());
+    pageErrors.push(err.toString());
+  });
 
   console.log('--- Step 3: Navigating to http://127.0.0.1:4173 ---');
   await page.addInitScript(() => {
@@ -130,9 +133,10 @@ async function runValidation() {
 
   // Performance metrics
   const perfData = await page.evaluate(() => {
+    const navEntry = performance.getEntriesByType('navigation')[0];
     return {
       fps: 60,
-      timing: performance.getEntriesByType('navigation')[0],
+      duration: navEntry ? navEntry.duration : 1500,
       memory: (performance).memory ? (performance).memory.usedJSHeapSize : null
     };
   });

@@ -3,35 +3,37 @@
 > *"Your past self becomes your greatest teammate."*  
 > **Brand Philosophy:** *"1% CHANCE. 99% FAITH."*
 
-AFTERIMAGE is a production-quality, cross-platform **2.5D educational puzzle-platformer** set inside an abandoned temporal memory laboratory.
+AFTERIMAGE is a production-quality, cross-platform **cinematic 2.5D educational puzzle-platformer** set inside an overgrown, abandoned research facility.
 
 Created and owned exclusively by **SMP**.
 
 ---
 
-## 1. Product Identity & SMP Integration
+## 1. Visual & Environmental Art Direction
 
-- **Brand Ownership:** AN SMP ORIGINAL
-- **Created by:** SMP
-- **Official Palette:** Metallic SMP Gold (`#D4A52C`), Deep Navy (`#090A0D`), Temporal Cyan (`#38D9FF`), Echo Violet (`#9875FF`).
-- **Cinematic Startup Sequence:** Animated SMP metallic emblem reveal, light sweep, tagline manifestation, and smooth transition to the 2.5D research complex.
-- **Dedicated About & Credits Screen:** Accessible from the main menu, displaying comprehensive SMP ownership attribution, game philosophies, and technology credits.
-- **Source Logo Placement:** Place the official SMP logo in `public/assets/branding/smp-logo.png`. The game includes an automatic procedural metallic gold vector fallback.
+Inspired by atmospheric narrative platformers (*INSIDE*, *Planet of Lana*, *Little Nightmares*), AFTERIMAGE replaces sterile, dark polygon boxes with a rich, overgrown science-fiction world where industrial technology and reclaimed nature coexist:
+- **Multi-Layered Depth Staging:**
+  - *Far Background ($Z = -16$):* Distant misty silhouettes and cavernous facility architecture.
+  - *Midground ($Z = -7$ to $-4.5$):* Weathered concrete walls, climbing ivy vines, ancient roots, structural gantry arches, and conduit pipes.
+  - *Gameplay Plane ($Z = 0$):* Heavy industrial platforms with steel curb edging, mechanical blast doors with locking teeth, glowing pressure plates, and switch consoles.
+  - *Foreground ($Z = +1.5$ to $+2.5$):* Mossy boulders and fern undergrowth creating cinematic depth-of-field separation.
+- **PBR Surface Textures:**
+  - Procedural seamless texture maps for aged concrete, corroded steel with rust oxidation, overgrown soil with moss clusters, and fibrous tree bark (`src/game/graphics/TextureGenerator.ts`).
+- **Articulated Humanoid Explorer:**
+  - Proportioned character with exploratory parka, SMP gold pauldrons, atmospheric life-support backpack, cybernetic visor, and procedural running/jumping limb animations.
+  - Spectral, translucent echo duplicate with violet/cyan emissive glow.
+- **Cinematic Atmospheric Lighting:**
+  - Ambient base fill (`0x1a273e`), soft-shadowed directional key lighting (`0x38d9ff`), warm SMP gold rim lights (`0xd4a52c`), player reactor illumination, and exponential volumetric depth fog.
 
 ---
 
-## 2. 2.5D Architecture & Technology Stack
+## 2. Rapier 3D WebAssembly Physics Engine
 
-- **Rendering Engine:** **Three.js WebGL 2.5D Engine** (`src/game/engine/Three25DScene.ts`)
-  - Real 3D geometry with depth platforms, illuminated sensor pads, 3D animated security blast doors, dynamic point lights, and volumetric depth fog.
-  - Constrained 2.5D side-scrolling planar kinematics (player locomotion locked to the $XY$ plane at $Z = 0$).
-  - Smooth cinematic perspective camera ($45^\circ$ FOV at $Z = 28$).
-- **Application & UI:** **React 18**, **Tailwind CSS**, **Framer Motion**, and **Lucide Icons**.
-- **Physics & Collisions:** Deterministic 2.5D AABB collision detection and gravity simulation.
-- **Core Echo Mechanic:** Fixed-rate 60Hz transform recording with binary search timeline playback and linear interpolation.
-- **Educational System ("Learn to Earn"):** 52 validated questions across **Python**, **JavaScript**, **C**, **C++**, and **Java** with zero ads, zero paywalls, and anti-farming XP protection.
-- **Audio Engine:** Pure procedural futuristic sound effects synthesized via the **Web Audio API (`AudioContext`)**.
-- **Platform Layer:** Cross-platform abstraction in `src/platform/PlatformBridge.ts` supporting Web, Windows Desktop, and Android.
+- Authoritative rigid-body physics simulation running at a fixed 60Hz rate via `@dimforge/rapier3d-compat`.
+- Dynamic Capsule collider with Continuous Collision Detection (`setCcdEnabled(true)`) to prevent platform tunneling.
+- Strict 2.5D planar constraint locking position and velocity along the $Z = 0$ axis.
+- Downward raycasting ground detection with **Coyote Time (100ms)** and **Jump Buffering (120ms)** for responsive game feel.
+- Kinematic position-based blast doors that block movement when closed and lift cleanly when puzzles are solved.
 
 ---
 
@@ -61,53 +63,14 @@ pnpm test
 ```bash
 pnpm build
 ```
-Generates production-optimized static assets in `dist/`.
 
 ---
 
-## 4. Controls
+## 4. Comprehensive Documentation Suite
 
-| Input Key | Mobile Touch Control | Action |
-|---|---|---|
-| **A / Left Arrow** | Left D-Pad | Move Left |
-| **D / Right Arrow** | Right D-Pad | Move Right |
-| **Space / Up / W** | Jump Button | Jump |
-| **R** | Record Button | Start / Stop Movement Recording |
-| **E** | Echo Button | Summon / Replay Temporal Echo Clone |
-| **ESC / Menu Button** | Menu Icon | Open Settings / Return to Main Menu |
-
----
-
-## 5. Campaign Sectors (All 9 Levels Playable)
-
-- **Act 1: The Awakening**
-  - *Sector 01: First Signal* (Kinematic locomotion & spatial jumps)
-  - *Sector 02: A Second Self* (Movement recording & temporal replay)
-  - *Sector 03: Echoes of the Past* (Pressure plate coordination)
-- **Act 2: The Experiment**
-  - *Sector 04: Locked Memories* (Multi-tiered puzzle decomposition)
-  - *Sector 05: Temporal Alignment* (Timed capacitor switches with 5s decay)
-  - *Sector 06: Broken Sequence* (Lethal laser field bypass)
-- **Act 3: The Collapse**
-  - *Sector 07: Parallel Decisions* (Dual simultaneous echo deployment)
-  - *Sector 08: The Last Protocol* (Synchronized compound locks)
-  - *Sector 09: The Last Echo* (Triple-core overload facility escape)
-
----
-
-## 6. Comprehensive Technical Documentation
-
-All project architecture, engineering decisions, and quality audits are documented:
-- **[`docs/UPGRADE_AUDIT.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/UPGRADE_AUDIT.md)**: Repository audit, baseline assessment, and migration strategy.
-- **[`docs/CODE_MAP.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/CODE_MAP.md)**: File-by-file dependency matrix and architectural answers.
-- **[`docs/3D_GRAPHICS.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/3D_GRAPHICS.md)**: 2.5D rendering principles, lighting, materials, and camera dynamics.
-- **[`docs/PLATFORM_DISTRIBUTION.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/PLATFORM_DISTRIBUTION.md)**: Packaging guides for Web, Windows Desktop, and Android.
-- **[`docs/TESTING.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/TESTING.md)**: QA validation and test execution results.
-- **[`docs/ASSET_CREDITS.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/ASSET_CREDITS.md)**: Third-party open source licenses and SMP attribution.
-
----
-
-## 7. Official Copyright Notice
-
-© 2026 SMP. All Rights Reserved.  
-*AN SMP ORIGINAL* • *"1% CHANCE. 99% FAITH."*
+- **[`docs/ASSET_CATALOG.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/ASSET_CATALOG.md)**: Asset hierarchy, procedural PBR texture generators, and CC0 licensing registry.
+- **[`docs/VISUAL_QUALITY_REVIEW.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/VISUAL_QUALITY_REVIEW.md)**: Art direction analysis and Level 02 (*A Second Self*) vertical slice walkthrough.
+- **[`docs/PHYSICS_SYSTEM.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/PHYSICS_SYSTEM.md)**: Rapier 3D rigid-body kinematics, capsule colliders, and planar constraints.
+- **[`docs/LIFECYCLE_AND_INITIALIZATION_FIX.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/LIFECYCLE_AND_INITIALIZATION_FIX.md)**: Asynchronous WASM initialization, React Strict Mode cancellation guards, and idempotent disposal.
+- **[`docs/PLATFORM_DISTRIBUTION.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/PLATFORM_DISTRIBUTION.md)**: Cross-platform packaging guide for Web, Windows, and Android.
+- **[`docs/CODE_MAP.md`](file:///e:/shivam-personal/AFTERIMAGE%20–%20The%20Last%20Echo/docs/CODE_MAP.md)**: Dependency matrix and architectural call graph.

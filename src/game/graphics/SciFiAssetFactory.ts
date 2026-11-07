@@ -10,6 +10,7 @@ export class SciFiAssetFactory {
   private static matVioletEmissive: THREE.MeshStandardMaterial;
   private static matGoldEmissive: THREE.MeshStandardMaterial;
   private static matMetalDark: THREE.MeshStandardMaterial;
+  private static matGlass: THREE.MeshPhysicalMaterial;
 
   public static initMaterials(): void {
     if (this.matFloor) return;
@@ -18,32 +19,32 @@ export class SciFiAssetFactory {
 
     // 1. Weathered Concrete Floor with Natural Moss & Water Stains
     this.matFloor = new THREE.MeshStandardMaterial({
-      color: 0x47566b,
-      roughness: 0.72,
-      metalness: 0.12,
+      color: 0x5a697c,
+      roughness: 0.68,
+      metalness: 0.1,
       map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
 
-    // 2. Industrial Wall Panels with Architectural Grime
+    // 2. Industrial Wall Panels with Architectural Grime & Seams
     this.matWall = new THREE.MeshStandardMaterial({
-      color: 0x2e3b4d,
-      roughness: 0.78,
-      metalness: 0.2,
+      color: 0x425064,
+      roughness: 0.72,
+      metalness: 0.15,
       map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
 
     // 3. Heavy Corroded Steel Beams & Structural Framing
     this.matTrim = new THREE.MeshStandardMaterial({
-      color: 0x4f5d6f,
-      roughness: 0.52,
+      color: 0x5f6e82,
+      roughness: 0.48,
       metalness: 0.75,
       map: hasDoc ? TextureGenerator.getCorrodedSteel() : null,
     });
 
     // 4. Dark Weathered Alloy
     this.matMetalDark = new THREE.MeshStandardMaterial({
-      color: 0x232c3a,
-      roughness: 0.58,
+      color: 0x2c3746,
+      roughness: 0.52,
       metalness: 0.85,
       map: hasDoc ? TextureGenerator.getCorrodedSteel() : null,
     });
@@ -52,7 +53,7 @@ export class SciFiAssetFactory {
     this.matCyanEmissive = new THREE.MeshStandardMaterial({
       color: 0x2cd5f5,
       emissive: 0x2cd5f5,
-      emissiveIntensity: 0.8,
+      emissiveIntensity: 0.9,
       roughness: 0.2,
     });
 
@@ -60,7 +61,7 @@ export class SciFiAssetFactory {
     this.matVioletEmissive = new THREE.MeshStandardMaterial({
       color: 0x8b66fa,
       emissive: 0x8b66fa,
-      emissiveIntensity: 0.7,
+      emissiveIntensity: 0.8,
       roughness: 0.3,
     });
 
@@ -68,15 +69,25 @@ export class SciFiAssetFactory {
     this.matGoldEmissive = new THREE.MeshStandardMaterial({
       color: 0xd4a52c,
       emissive: 0xd4a52c,
-      emissiveIntensity: 0.7,
+      emissiveIntensity: 0.8,
       roughness: 0.35,
       metalness: 0.8,
+    });
+
+    // 8. Observation Window Glass
+    this.matGlass = new THREE.MeshPhysicalMaterial({
+      color: 0x8eb4d0,
+      transmission: 0.7,
+      opacity: 0.85,
+      transparent: true,
+      roughness: 0.2,
+      ior: 1.5,
     });
   }
 
   /**
    * Builds an overgrown, weathered industrial concrete platform reclaimed by moss,
-   * strictly centered on the gameplay plane (Z = 0).
+   * with structural support columns underneath extending downward.
    */
   public static createIndustrialPlatform(width: number, height: number, depth: number = 4.0): THREE.Group {
     this.initMaterials();
@@ -97,30 +108,98 @@ export class SciFiAssetFactory {
     curbBack.position.set(0, height / 2 + 0.05, -depth / 2 + 0.15);
     group.add(curbFront, curbBack);
 
-    // 3. Overgrown Nature & Hanging Foliage (Strictly behind or below gameplay line)
-    if (width >= 2.5) {
-      const vineLeft = NatureAssetFactory.createHangingVines(1.8);
-      vineLeft.position.set(-width * 0.3, -height / 2, -0.6);
-      group.add(vineLeft);
-
-      const fern = NatureAssetFactory.createFernPatch();
-      fern.position.set(width * 0.25, height / 2, -0.8);
-      group.add(fern);
+    // 3. Structural Concrete Support Columns Extending to Foundation
+    const columnCount = Math.max(1, Math.floor(width / 3.5));
+    for (let i = 0; i < columnCount; i++) {
+      const xPos = -width / 2 + (width / (columnCount + 1)) * (i + 1);
+      const col = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 4.5, 0.8),
+        this.matWall
+      );
+      col.position.set(xPos, -height / 2 - 2.25, -0.2);
+      col.castShadow = true;
+      group.add(col);
     }
 
-    // 4. Underside Heavy Structural I-Beams
-    const beamCount = Math.max(1, Math.floor(width / 3.0));
-    for (let i = 0; i < beamCount; i++) {
-      const xPos = -width / 2 + (width / (beamCount + 1)) * (i + 1);
-      const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.16, 2.0, 8),
-        this.matMetalDark
-      );
-      beam.position.set(xPos, -height / 2 - 0.9, 0);
-      group.add(beam);
+    // 4. Overgrowth Vines draping along the support pillars
+    if (width >= 2.5) {
+      const vine = NatureAssetFactory.createHangingVines(2.0);
+      vine.position.set(-width * 0.25, -height / 2, -0.4);
+      group.add(vine);
     }
 
     return group;
+  }
+
+  /**
+   * Architectural Research Bulkhead Wall with observation windows, cable channels,
+   * maintenance hatches, and recessed structural buttresses.
+   */
+  public static createArchitecturalWall(roomWidth: number = 75, roomHeight: number = 30): THREE.Group {
+    this.initMaterials();
+    const wallGroup = new THREE.Group();
+
+    // 1. Main Continuous Architectural Concrete Wall
+    const wallGeom = new THREE.PlaneGeometry(roomWidth, roomHeight);
+    const backWall = new THREE.Mesh(wallGeom, this.matWall);
+    backWall.position.set(0, roomHeight / 2 - 2, -7.0);
+    backWall.receiveShadow = true;
+    wallGroup.add(backWall);
+
+    // 2. Recessed Concrete Foundation Dado (Lower Wall Wainscot)
+    const dadoGeom = new THREE.BoxGeometry(roomWidth + 2, 3.5, 0.4);
+    const dado = new THREE.Mesh(dadoGeom, this.matTrim);
+    dado.position.set(0, 0, -6.8);
+    dado.receiveShadow = true;
+    wallGroup.add(dado);
+
+    // 3. Observation Glass Windows & Lab Recesses
+    const windowIntervals = [-22, -8, 8, 22];
+    windowIntervals.forEach((wx) => {
+      // Recessed Bay Frame
+      const bayFrame = new THREE.Mesh(new THREE.BoxGeometry(5.0, 3.2, 0.4), this.matMetalDark);
+      bayFrame.position.set(wx, 8.5, -6.8);
+
+      const glassPane = new THREE.Mesh(new THREE.PlaneGeometry(4.4, 2.6), this.matGlass);
+      glassPane.position.set(wx, 8.5, -6.6);
+
+      // Backlit laboratory interior glow behind window
+      const interiorBack = new THREE.Mesh(
+        new THREE.PlaneGeometry(4.6, 2.8),
+        new THREE.MeshStandardMaterial({
+          color: 0x1d2e3d,
+          emissive: 0x1d3d52,
+          emissiveIntensity: 0.6,
+        })
+      );
+      interiorBack.position.set(wx, 8.5, -7.1);
+
+      wallGroup.add(bayFrame, glassPane, interiorBack);
+    });
+
+    // 4. Structural Overhead Gantry Columns & Heavy Heavy I-Beam Lintels
+    for (let x = -roomWidth / 2 + 5; x <= roomWidth / 2 - 5; x += 11) {
+      const colGroup = new THREE.Group();
+      colGroup.position.set(x, 0, -5.2);
+
+      // Concrete Buttress Column
+      const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.7, roomHeight, 1.0), this.matTrim);
+      pillar.position.set(0, roomHeight / 2 - 2, 0);
+      pillar.castShadow = true;
+      pillar.receiveShadow = true;
+
+      // Industrial Conduit Runs (Twin high-voltage cables)
+      const conduit1 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, roomHeight, 8), this.matMetalDark);
+      conduit1.position.set(0.45, roomHeight / 2 - 2, 0.2);
+
+      const conduit2 = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, roomHeight, 8), this.matMetalDark);
+      conduit2.position.set(0.45, roomHeight / 2 - 2, 0.4);
+
+      colGroup.add(pillar, conduit1, conduit2);
+      wallGroup.add(colGroup);
+    }
+
+    return wallGroup;
   }
 
   /**
@@ -135,17 +214,17 @@ export class SciFiAssetFactory {
     const doorGroup = new THREE.Group();
 
     // Heavy Concrete & Steel Framing Arch
-    const pillarGeom = new THREE.BoxGeometry(0.5, height + 1.2, depth + 0.6);
+    const pillarGeom = new THREE.BoxGeometry(0.7, height + 1.2, depth + 0.6);
     const leftPillar = new THREE.Mesh(pillarGeom, this.matTrim);
-    leftPillar.position.set(-width / 2 - 0.25, 0.2, 0);
+    leftPillar.position.set(-width / 2 - 0.35, 0.2, 0);
     const rightPillar = new THREE.Mesh(pillarGeom, this.matTrim);
-    rightPillar.position.set(width / 2 + 0.25, 0.2, 0);
+    rightPillar.position.set(width / 2 + 0.35, 0.2, 0);
 
     const topLintel = new THREE.Mesh(
-      new THREE.BoxGeometry(width + 1.4, 0.6, depth + 0.6),
+      new THREE.BoxGeometry(width + 1.6, 0.8, depth + 0.6),
       this.matTrim
     );
-    topLintel.position.set(0, height / 2 + 0.5, 0);
+    topLintel.position.set(0, height / 2 + 0.6, 0);
     doorGroup.add(leftPillar, rightPillar, topLintel);
 
     // Sliding Reinforced Bulkhead Door
@@ -154,9 +233,9 @@ export class SciFiAssetFactory {
     slidingSlab.castShadow = true;
     slidingSlab.receiveShadow = true;
 
-    // Glowing status lock indicator
+    // Status lock indicator
     const lockBar = new THREE.Mesh(
-      new THREE.BoxGeometry(width * 0.7, 0.12, depth + 0.08),
+      new THREE.BoxGeometry(width * 0.7, 0.16, depth + 0.08),
       this.matCyanEmissive
     );
     slidingSlab.add(lockBar);
@@ -164,10 +243,6 @@ export class SciFiAssetFactory {
     doorGroup.add(slidingSlab);
     return { doorGroup, slidingSlab };
   }
-
-  /**
-   * Environmental 3D Pressure Plate Sensor with hydraulic dampers and damp concrete rim.
-   */
   public static createPressurePlate(width: number): {
     plateGroup: THREE.Group;
     padMesh: THREE.Mesh;
@@ -176,14 +251,12 @@ export class SciFiAssetFactory {
     this.initMaterials();
     const plateGroup = new THREE.Group();
 
-    // Concrete & Rusted Rim
     const baseMesh = new THREE.Mesh(
       new THREE.BoxGeometry(width + 0.3, 0.15, 2.4),
       this.matTrim
     );
     plateGroup.add(baseMesh);
 
-    // Depressible Sensor Pad
     const padMesh = new THREE.Mesh(
       new THREE.BoxGeometry(width, 0.12, 1.9),
       this.matCyanEmissive
@@ -199,7 +272,7 @@ export class SciFiAssetFactory {
   }
 
   /**
-   * Abandoned Research Terminal Console with tactile CRT monitor and status beacon.
+   * Research Terminal Console
    */
   public static createSwitchTerminal(): {
     terminalGroup: THREE.Group;
@@ -222,7 +295,6 @@ export class SciFiAssetFactory {
     consoleHead.position.set(0, 1.25, 0.15);
     consoleHead.rotation.x = -Math.PI / 6;
 
-    // Glowing Amber Beacon
     const beaconMesh = new THREE.Mesh(
       new THREE.SphereGeometry(0.12, 16, 16),
       this.matGoldEmissive
@@ -237,7 +309,7 @@ export class SciFiAssetFactory {
   }
 
   /**
-   * High-Fidelity Humanoid Explorer Character
+   * Humanoid Explorer Character
    */
   public static createHumanoidCharacter(isEcho: boolean = false): {
     characterGroup: THREE.Group;
@@ -259,7 +331,7 @@ export class SciFiAssetFactory {
           roughness: 0.3,
         })
       : new THREE.MeshStandardMaterial({
-          color: 0x334458, // Weathered slate-navy exploratory suit
+          color: 0x334458,
           roughness: 0.65,
           metalness: 0.25,
         });
@@ -267,43 +339,37 @@ export class SciFiAssetFactory {
     const armorMat = isEcho
       ? this.matVioletEmissive
       : new THREE.MeshStandardMaterial({
-          color: 0xd4a52c, // SMP Gold exploratory shoulder plates
+          color: 0xd4a52c,
           roughness: 0.35,
           metalness: 0.8,
         });
 
     const visorMat = isEcho ? this.matVioletEmissive : this.matCyanEmissive;
 
-    // 1. Torso & Exploration Parka
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.82, 0.44), suitMat);
     torso.position.y = 0.95;
     torso.castShadow = !isEcho;
 
-    // Life Support Backpack
     const backpack = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.6, 0.22), this.matMetalDark);
     backpack.position.set(0, 0.05, -0.28);
     torso.add(backpack);
 
-    // Glowing Chest Reactor
     const core = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 16), visorMat);
     core.position.set(0, 0.12, 0.24);
     torso.add(core);
 
-    // 2. Helmet & Detailed Visor
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.44, 0.42), suitMat);
     head.position.y = 1.55;
     const visor = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.14, 0.16), visorMat);
     visor.position.set(0, 0.02, 0.2);
     head.add(visor);
 
-    // 3. Shoulders & Arms
     const armGeom = new THREE.BoxGeometry(0.18, 0.65, 0.2);
     const leftArm = new THREE.Mesh(armGeom, suitMat);
     leftArm.position.set(-0.46, 0.9, 0);
     const rightArm = new THREE.Mesh(armGeom, suitMat);
     rightArm.position.set(0.46, 0.9, 0);
 
-    // Shoulder Pauldrons
     const pauldronL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.15, 0.26), armorMat);
     pauldronL.position.set(0, 0.3, 0);
     leftArm.add(pauldronL);
@@ -311,7 +377,6 @@ export class SciFiAssetFactory {
     pauldronR.position.set(0, 0.3, 0);
     rightArm.add(pauldronR);
 
-    // 4. Articulated Legs
     const legGeom = new THREE.BoxGeometry(0.22, 0.7, 0.26);
     const leftLeg = new THREE.Mesh(legGeom, suitMat);
     leftLeg.position.set(-0.2, 0.35, 0);
@@ -330,18 +395,16 @@ export class SciFiAssetFactory {
   }
 
   /**
-   * Background and Architecture Environment:
-   * Sets up distant landscape and facility back wall with structural columns at Z = -16 to -5.
-   * Does NOT place foreground boulders or clutter in front of the gameplay plane!
+   * Multi-Layered Facility Environment
    */
-  public static createFacilityEnvironment(roomWidth: number = 70, roomHeight: number = 28): THREE.Group {
+  public static createFacilityEnvironment(roomWidth: number = 75, roomHeight: number = 30): THREE.Group {
     this.initMaterials();
     const envGroup = new THREE.Group();
 
-    // 1. Distant Foggy Landscape (Far Background: Z = -16)
+    // 1. Distant Foggy Mountain Landscape (Far Background: Z = -16)
     const mountainGeom = new THREE.PlaneGeometry(roomWidth * 1.5, roomHeight * 1.2);
     const mountainMat = new THREE.MeshStandardMaterial({
-      color: 0x1d2939,
+      color: 0x223040,
       roughness: 0.95,
       metalness: 0.05,
     });
@@ -349,47 +412,9 @@ export class SciFiAssetFactory {
     mountain.position.set(0, roomHeight / 2 - 2, -16.0);
     envGroup.add(mountain);
 
-    // 2. Overgrown Research Facility Wall with Moss & Ivy (Midground: Z = -7)
-    const wallGeom = new THREE.PlaneGeometry(roomWidth, roomHeight);
-    const backWall = new THREE.Mesh(wallGeom, this.matWall);
-    backWall.position.set(0, roomHeight / 2 - 2, -7.0);
-    backWall.receiveShadow = true;
-    envGroup.add(backWall);
-
-    // 3. Ancient Trees & Giant Roots Reclaiming the Complex (Z = -5.5 to -5.0)
-    const tree1 = NatureAssetFactory.createAncientTree(14);
-    tree1.position.set(-18, -1.0, -5.5);
-    envGroup.add(tree1);
-
-    const tree2 = NatureAssetFactory.createAncientTree(12);
-    tree2.position.set(16, -1.0, -5.0);
-    envGroup.add(tree2);
-
-    // 4. Overgrown Gantry Columns & Broken Ceiling Trusses (Z = -4.8)
-    for (let x = -roomWidth / 2 + 6; x <= roomWidth / 2 - 6; x += 10) {
-      const archGroup = new THREE.Group();
-      archGroup.position.set(x, 0, -4.8);
-
-      const pillar = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, roomHeight, 0.7),
-        this.matTrim
-      );
-      pillar.position.set(0, roomHeight / 2 - 2, 0);
-
-      const vine = NatureAssetFactory.createHangingVines(3.5);
-      vine.position.set(0.1, roomHeight - 6, 0.35);
-      archGroup.add(pillar, vine);
-
-      const conduit = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.14, 0.14, 10.0, 8),
-        this.matMetalDark
-      );
-      conduit.rotation.z = Math.PI / 2;
-      conduit.position.set(5.0, roomHeight - 5, -0.4);
-      archGroup.add(conduit);
-
-      envGroup.add(archGroup);
-    }
+    // 2. Continuous Architectural Facility Wall
+    const archWall = this.createArchitecturalWall(roomWidth, roomHeight);
+    envGroup.add(archWall);
 
     return envGroup;
   }

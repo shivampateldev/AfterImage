@@ -5,6 +5,7 @@ import { gameEvents, EVENTS } from '../events/GameEventBus';
 import { sound } from '../../services/audio/AudioService';
 import { RecordingSystem } from '../systems/RecordingSystem';
 import { SciFiAssetFactory } from '../graphics/SciFiAssetFactory';
+import { NatureAssetFactory } from '../graphics/NatureAssetFactory';
 import { RapierPhysicsWorld } from '../physics/RapierPhysicsWorld';
 import { ModelAssetPipeline } from '../graphics/ModelAssetPipeline';
 
@@ -296,17 +297,26 @@ export class Three25DScene {
     try {
       const tree1 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
       tree1.position.set(-16, -1.0, -5.5);
-      tree1.scale.set(1.05, 1.05, 1.05);
+      tree1.scale.set(1.15, 1.15, 1.15);
       this.architectureGroup.add(tree1);
       this.platformMeshes.push(tree1);
 
       const tree2 = await pipeline.loadModel('/assets/nature/tree_ancient.glb');
-      tree2.position.set(15, -1.0, -5.0);
-      tree2.scale.set(0.95, 0.95, 0.95);
+      tree2.position.set(17, -1.0, -5.0);
+      tree2.scale.set(1.0, 1.0, 1.0);
       this.architectureGroup.add(tree2);
       this.platformMeshes.push(tree2);
     } catch (e) {
       console.warn('Nature GLB loading fallback:', e);
+      const procTree1 = NatureAssetFactory.createAncientTree(12, 'oak');
+      procTree1.position.set(-16, -1.0, -5.5);
+      this.architectureGroup.add(procTree1);
+      this.platformMeshes.push(procTree1);
+
+      const procTree2 = NatureAssetFactory.createAncientTree(10, 'pine');
+      procTree2.position.set(17, -1.0, -5.0);
+      this.architectureGroup.add(procTree2);
+      this.platformMeshes.push(procTree2);
     }
 
     // 2. Layer 4: Gameplay Environment Platforms (Z = 0)

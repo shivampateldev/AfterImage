@@ -233,9 +233,8 @@ export class RapierPhysicsWorld {
 
   public resetWorld(): void {
     if (this.world) {
-      this.world.forEachRigidBody((body) => {
-        this.world.removeRigidBody(body);
-      });
+      this.world.free();
+      this.world = new RAPIER.World(this.gravity);
       this.playerBody = null;
       this.playerCollider = null;
       this.debugObjects = [];
@@ -245,8 +244,10 @@ export class RapierPhysicsWorld {
 
   public destroy(): void {
     if (this.world) {
-      this.resetWorld();
       this.world.free();
+      this.playerBody = null;
+      this.playerCollider = null;
+      this.debugObjects = [];
     }
   }
 }

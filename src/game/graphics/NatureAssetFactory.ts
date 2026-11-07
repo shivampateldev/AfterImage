@@ -3,8 +3,9 @@ import { TextureGenerator } from './TextureGenerator';
 
 /**
  * Organic Nature & Overgrowth Asset Pipeline
- * Generates trees with natural trunk branching, leaf clusters, mossy boulders,
- * and hanging vines inspired by INSIDE and Planet of Lana.
+ * Generates botanically inspired trees with organic bark topology,
+ * multiple levels of natural branching (trunks -> main limbs -> twigs),
+ * and angled planar foliage leaf-cards with translucency, eliminating spherical blobs.
  */
 export class NatureAssetFactory {
   private static matBark: THREE.MeshStandardMaterial;
@@ -17,98 +18,138 @@ export class NatureAssetFactory {
 
     const hasDoc = typeof document !== 'undefined';
 
+    // Warm, deeply textured organic tree bark
     this.matBark = new THREE.MeshStandardMaterial({
-      color: 0x42382e,
-      roughness: 0.85,
-      metalness: 0.05,
+      color: 0x544336,
+      roughness: 0.88,
+      metalness: 0.04,
       map: hasDoc ? TextureGenerator.getTreeBark() : null,
     });
 
+    // Realistic foliage card material with double-sided rendering and translucency
     this.matLeaves = new THREE.MeshStandardMaterial({
-      color: 0x3d6335,
-      roughness: 0.7,
+      color: 0x4f7d3a,
+      roughness: 0.62,
       metalness: 0.0,
       side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.95,
+      alphaTest: 0.15,
     });
 
     this.matVines = new THREE.MeshStandardMaterial({
-      color: 0x385c2c,
-      roughness: 0.75,
+      color: 0x456c32,
+      roughness: 0.72,
       metalness: 0.05,
     });
 
     this.matRock = new THREE.MeshStandardMaterial({
-      color: 0x48525e,
-      roughness: 0.8,
-      metalness: 0.15,
+      color: 0x5a6575,
+      roughness: 0.82,
+      metalness: 0.12,
       map: hasDoc ? TextureGenerator.getAgedConcrete() : null,
     });
   }
 
   /**
-   * Creates an ancient gnarly tree with detailed branch canopy and natural silhouette.
+   * Creates an organic tree with tapered curved trunk, root flare, multi-tier branches,
+   * and non-spherical instanced leaf-card clusters.
    */
-  public static createAncientTree(height: number = 10): THREE.Group {
+  public static createAncientTree(height: number = 11, species: 'oak' | 'pine' | 'willow' = 'oak'): THREE.Group {
     this.init();
     const treeGroup = new THREE.Group();
-    treeGroup.name = 'AncientTreeGroup';
+    treeGroup.name = `Tree_${species}_${height}`;
 
-    // Main Trunk with natural tapered curvature
-    const trunkGeom = new THREE.CylinderGeometry(0.3, 0.65, height, 10);
+    // 1. Organic Tapered Trunk
+    const trunkCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0.2, height * 0.3, 0.1),
+      new THREE.Vector3(-0.15, height * 0.65, -0.1),
+      new THREE.Vector3(0.1, height * 0.9, 0.05),
+      new THREE.Vector3(0, height, 0),
+    ]);
+
+    const trunkGeom = new THREE.TubeGeometry(trunkCurve, 16, 0.42, 8, false);
     const trunk = new THREE.Mesh(trunkGeom, this.matBark);
-    trunk.position.y = height / 2;
     trunk.castShadow = true;
     trunk.receiveShadow = true;
     treeGroup.add(trunk);
 
-    // Twisted Root buttresses reaching into the floor
-    for (let i = 0; i < 4; i++) {
-      const angle = (i * Math.PI) / 2 + Math.PI / 4;
-      const root = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.25, 2.2, 6),
+    // 2. Flared Root Buttresses
+    for (let i = 0; i < 5; i++) {
+      const angle = (i * Math.PI * 2) / 5 + 0.2;
+      const rootLength = 1.8 + Math.random() * 0.8;
+      const rootCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(Math.cos(angle) * 0.4, 0.8, Math.sin(angle) * 0.4),
+        new THREE.Vector3(Math.cos(angle) * 1.0, 0.2, Math.sin(angle) * 1.0),
+        new THREE.Vector3(Math.cos(angle) * rootLength, -0.2, Math.sin(angle) * rootLength),
+      ]);
+      const rootMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(rootCurve, 8, 0.18, 6, false),
         this.matBark
       );
-      root.position.set(Math.cos(angle) * 0.6, 0.6, Math.sin(angle) * 0.6);
-      root.rotation.z = Math.cos(angle) * 0.45;
-      root.rotation.x = Math.sin(angle) * 0.45;
-      treeGroup.add(root);
+      rootMesh.castShadow = true;
+      treeGroup.add(rootMesh);
     }
 
-    // Natural Branch Spreads
-    const branchConfigs = [
-      { y: height * 0.55, rotZ: 0.6, rotY: 0.2, length: 2.8, scale: 1.6 },
-      { y: height * 0.7, rotZ: -0.55, rotY: 1.4, length: 3.2, scale: 1.8 },
-      { y: height * 0.82, rotZ: 0.45, rotY: -1.0, length: 2.4, scale: 1.5 },
-      { y: height * 0.92, rotZ: -0.3, rotY: 0.5, length: 2.0, scale: 1.4 },
-      { y: height * 0.98, rotZ: 0.1, rotY: 2.1, length: 1.8, scale: 2.2 },
+    // 3. Multi-tier Branching Hierarchy (Trunk -> Primary Limbs -> Secondary Twigs)
+    const branchTiers = [
+      { y: height * 0.45, dir: new THREE.Vector3(1.2, 0.7, 0.4), len: 3.2, thick: 0.18 },
+      { y: height * 0.58, dir: new THREE.Vector3(-1.4, 0.8, -0.3), len: 3.5, thick: 0.19 },
+      { y: height * 0.72, dir: new THREE.Vector3(0.8, 0.9, -0.8), len: 2.8, thick: 0.16 },
+      { y: height * 0.84, dir: new THREE.Vector3(-0.9, 1.0, 0.7), len: 2.4, thick: 0.14 },
+      { y: height * 0.94, dir: new THREE.Vector3(0.3, 1.1, 0.2), len: 2.0, thick: 0.12 },
     ];
 
-    branchConfigs.forEach((cfg) => {
-      const limb = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.1, 0.22, cfg.length, 6),
+    branchTiers.forEach((tier) => {
+      const startPt = trunkCurve.getPoint(tier.y / height);
+      const endPt = startPt.clone().add(tier.dir.clone().normalize().multiplyScalar(tier.len));
+
+      const branchCurve = new THREE.CatmullRomCurve3([
+        startPt,
+        startPt.clone().add(tier.dir.clone().multiplyScalar(0.5)).add(new THREE.Vector3(0, 0.2, 0)),
+        endPt,
+      ]);
+
+      const branchMesh = new THREE.Mesh(
+        new THREE.TubeGeometry(branchCurve, 8, tier.thick, 6, false),
         this.matBark
       );
-      limb.position.set(0, cfg.y, 0);
-      limb.rotation.z = cfg.rotZ;
-      limb.rotation.y = cfg.rotY;
-      treeGroup.add(limb);
+      branchMesh.castShadow = true;
+      treeGroup.add(branchMesh);
 
-      // Fine leaf cluster at the tip of each branch
-      const tipOffset = new THREE.Vector3(0, cfg.length / 2, 0).applyEuler(limb.rotation);
-      const leafCluster = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(cfg.scale, 1),
-        this.matLeaves
-      );
-      leafCluster.position.set(tipOffset.x, cfg.y + tipOffset.y, tipOffset.z);
-      leafCluster.castShadow = true;
-      treeGroup.add(leafCluster);
+      // 4. Foliage Cards: Irregular leaf planes angled naturally (NO SPHERES!)
+      const foliageGroup = new THREE.Group();
+      foliageGroup.position.copy(endPt);
+
+      const leafCount = 14;
+      for (let j = 0; j < leafCount; j++) {
+        const spread = 1.3;
+        const lx = (Math.random() - 0.5) * spread * 2;
+        const ly = (Math.random() - 0.3) * spread * 1.5;
+        const lz = (Math.random() - 0.5) * spread * 2;
+
+        // Crossed leaf card planes
+        const cardGeom = new THREE.PlaneGeometry(0.85 + Math.random() * 0.4, 0.65 + Math.random() * 0.3);
+        const card = new THREE.Mesh(cardGeom, this.matLeaves);
+        card.position.set(lx, ly, lz);
+        card.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        card.castShadow = true;
+        card.receiveShadow = true;
+        foliageGroup.add(card);
+      }
+      treeGroup.add(foliageGroup);
     });
 
     return treeGroup;
   }
 
   /**
-   * Creates natural hanging moss and climbing ivy vines.
+   * Creates natural hanging moss and climbing ivy vines to drape over concrete walls.
    */
   public static createHangingVines(length: number = 3.5): THREE.Group {
     this.init();
@@ -138,11 +179,11 @@ export class NatureAssetFactory {
    */
   public static createMossyBoulder(radius: number = 0.8): THREE.Mesh {
     this.init();
-    const geom = new THREE.IcosahedronGeometry(radius, 1);
+    const geom = new THREE.IcosahedronGeometry(radius, 2);
     const pos = geom.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const v = new THREE.Vector3().fromBufferAttribute(pos, i);
-      v.multiplyScalar(0.88 + Math.random() * 0.25);
+      v.multiplyScalar(0.85 + Math.random() * 0.28);
       pos.setXYZ(i, v.x, v.y, v.z);
     }
     geom.computeVertexNormals();
@@ -161,12 +202,12 @@ export class NatureAssetFactory {
     const patch = new THREE.Group();
     patch.name = 'FernPatchGroup';
 
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI * 2) / 6;
-      const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.25, 0.8), this.matLeaves);
-      frond.position.set(Math.cos(angle) * 0.25, 0.35, Math.sin(angle) * 0.25);
+    for (let i = 0; i < 7; i++) {
+      const angle = (i * Math.PI * 2) / 7;
+      const frond = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.95), this.matLeaves);
+      frond.position.set(Math.cos(angle) * 0.28, 0.4, Math.sin(angle) * 0.28);
       frond.rotation.y = angle;
-      frond.rotation.x = Math.PI / 4.5;
+      frond.rotation.x = Math.PI / 4.2;
       patch.add(frond);
     }
 

@@ -61,3 +61,4 @@ A development-only visual physics debugger is embedded in `Three25DScene`.
 3. **Player jumps when slightly in air:**
    - Coyote time buffer ($0.1\text{s}$) allows responsive jumping right after walking off a platform ledge.
    - Jump buffer ($0.12\text{s}$) buffers the jump command right before hitting the ground.
+

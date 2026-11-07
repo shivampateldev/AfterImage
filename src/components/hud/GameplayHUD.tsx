@@ -252,8 +252,10 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
         <div className="hidden md:flex bg-facility-900/80 border border-facility-700/60 p-2.5 rounded-xl backdrop-blur-sm text-xs text-slate-400 font-mono space-x-3">
           <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">A/D</kbd> Move</span>
           <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">Space</kbd> Jump</span>
+          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">F</kbd> Interact</span>
           <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">R</kbd> Record</span>
           <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">E</kbd> Echo</span>
+          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-[#D4A52C] border border-[#D4A52C]/40">F1</kbd> Physics</span>
         </div>
       </footer>
 

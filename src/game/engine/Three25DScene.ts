@@ -760,15 +760,15 @@ export class Three25DScene {
         sound.playDoorOpen();
       }
 
-      const targetY = door.isOpen ? door.initialY + door.openOffsetY : door.initialY;
-      const currentY = door.slidingSlab.position.y;
-      const newY = currentY + (targetY - currentY) * 0.15;
-      door.slidingSlab.position.y = newY;
+      const targetOffsetY = door.isOpen ? door.openOffsetY : 0;
+      const currentLocalY = door.slidingSlab.position.y;
+      const newLocalY = currentLocalY + (targetOffsetY - currentLocalY) * 0.15;
+      door.slidingSlab.position.y = newLocalY;
 
       const bodyPos = door.body.translation();
       door.body.setNextKinematicTranslation({
         x: bodyPos.x,
-        y: newY,
+        y: door.initialY + newLocalY,
         z: 0,
       });
     }

@@ -37,3 +37,4 @@ The tree creation pipeline was rebuilt across [NatureAssetFactory.ts](file:///e:
   - Bark: `color: 0x544336`, `roughness: 0.88`, `metalness: 0.04` with procedural tree bark normal displacement.
   - Leaves: `color: 0x4f7d3a`, `roughness: 0.62`, `side: THREE.DoubleSide`, `alphaTest: 0.15`.
 - **Runtime Validation:** Verified in real Chrome browser (`02_main_environment.png`, `03_jumping_and_locomotion.png`).
+

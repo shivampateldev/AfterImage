@@ -47,3 +47,4 @@ The gate and bulkhead door were completely re-engineered in [scripts/generate-ga
   - `06_echo_playback.png` (Gate locked, echo activating switch)
   - `07_door_opened.png` (Gate slab smoothly retracted into lintel housing)
 - **Console Errors:** **0 errors**.
+

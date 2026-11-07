@@ -3,7 +3,6 @@ const path = require('path');
 const THREE = require('three');
 const { GLTFExporter } = require('three/examples/jsm/exporters/GLTFExporter.js');
 
-// Polyfill FileReader for Node.js
 class FileReaderPolyfill {
   readAsArrayBuffer(blob) {
     blob.arrayBuffer().then((buf) => {
@@ -44,7 +43,7 @@ function generatePlayerModel() {
     name: 'Suit_Fabric'
   });
   const armorMat = new THREE.MeshStandardMaterial({
-    color: 0xd4a52c, // SMP Gold
+    color: 0xd4a52c,
     roughness: 0.35,
     metalness: 0.85,
     name: 'SMP_Gold_Armor'
@@ -134,7 +133,7 @@ function generatePlayerModel() {
   exportToGLB(root, path.join(projectRoot, 'public/assets/characters/player_explorer.glb'));
 }
 
-// 2. GENERATE BOTANICAL ORGANIC TREES (NO SPHERICAL BLOBS!)
+// 2. GENERATE BOTANICAL ORGANIC TREES
 function generateNatureModels() {
   const treeRoot = new THREE.Group();
   treeRoot.name = 'Botanical_Organic_Tree';
@@ -146,7 +145,6 @@ function generateNatureModels() {
     side: THREE.DoubleSide
   });
 
-  // Tapered organic trunk using spline curve
   const height = 11.0;
   const trunkCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0, 0, 0),
@@ -159,7 +157,6 @@ function generateNatureModels() {
   const trunk = new THREE.Mesh(new THREE.TubeGeometry(trunkCurve, 16, 0.42, 8, false), barkMat);
   treeRoot.add(trunk);
 
-  // Root flares
   for (let i = 0; i < 5; i++) {
     const angle = (i * Math.PI * 2) / 5 + 0.2;
     const rootCurve = new THREE.CatmullRomCurve3([
@@ -171,7 +168,6 @@ function generateNatureModels() {
     treeRoot.add(root);
   }
 
-  // Branch tiers with instanced foliage cards
   const branches = [
     { y: 5.0, dir: new THREE.Vector3(1.2, 0.7, 0.4), len: 3.2, thick: 0.18 },
     { y: 6.5, dir: new THREE.Vector3(-1.4, 0.8, -0.3), len: 3.5, thick: 0.19 },
@@ -191,7 +187,6 @@ function generateNatureModels() {
     const branchMesh = new THREE.Mesh(new THREE.TubeGeometry(branchCurve, 8, b.thick, 6, false), barkMat);
     treeRoot.add(branchMesh);
 
-    // Foliage Cards (Non-spherical, organic canopy silhouette)
     const folGroup = new THREE.Group();
     folGroup.position.copy(endPt);
     for (let j = 0; j < 14; j++) {
@@ -212,14 +207,12 @@ function generateNatureModels() {
 
   exportToGLB(treeRoot, path.join(projectRoot, 'public/assets/nature/tree_ancient.glb'));
 
-  // Mossy Boulder
   const rockGeom = new THREE.IcosahedronGeometry(1.0, 2);
   const rockMat = new THREE.MeshStandardMaterial({ color: 0x5a6575, roughness: 0.8, metalness: 0.15 });
   const rock = new THREE.Mesh(rockGeom, rockMat);
   rock.name = 'Mossy_Boulder';
   exportToGLB(rock, path.join(projectRoot, 'public/assets/nature/boulder_mossy.glb'));
 
-  // Fern Cluster
   const fernRoot = new THREE.Group();
   fernRoot.name = 'Fern_Cluster';
   for (let i = 0; i < 7; i++) {
@@ -233,64 +226,81 @@ function generateNatureModels() {
   exportToGLB(fernRoot, path.join(projectRoot, 'public/assets/nature/fern_cluster.glb'));
 }
 
-// 3. GENERATE INTEGRATED INDUSTRIAL RESEARCH GATE & BLAST DOOR
+// 3. GENERATE COMPLETE INDUSTRIAL SLIDING BLAST DOOR (VISIBLE SOLID DOOR PANEL)
 function generateMachineryModels() {
-  const concreteMat = new THREE.MeshStandardMaterial({ color: 0x566578, roughness: 0.75, metalness: 0.15 });
-  const steelMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, roughness: 0.45, metalness: 0.8 });
-  const darkAlloy = new THREE.MeshStandardMaterial({ color: 0x222a36, roughness: 0.55, metalness: 0.9 });
-  const cyanEmissive = new THREE.MeshStandardMaterial({ color: 0x2cd5f5, emissive: 0x2cd5f5, emissiveIntensity: 1.0 });
-  const amberEmissive = new THREE.MeshStandardMaterial({ color: 0xd4a52c, emissive: 0xd4a52c, emissiveIntensity: 0.9 });
+  const concreteMat = new THREE.MeshStandardMaterial({ color: 0x627387, roughness: 0.7, metalness: 0.15 });
+  const frameSteel = new THREE.MeshStandardMaterial({ color: 0x3e4a5b, roughness: 0.45, metalness: 0.8 });
+  const doorPanelSteel = new THREE.MeshStandardMaterial({ color: 0x242d3a, roughness: 0.4, metalness: 0.85 });
+  const cyanEmissive = new THREE.MeshStandardMaterial({ color: 0x2cd5f5, emissive: 0x2cd5f5, emissiveIntensity: 1.2 });
+  const amberEmissive = new THREE.MeshStandardMaterial({ color: 0xd4a52c, emissive: 0xd4a52c, emissiveIntensity: 1.0 });
 
-  // Industrial Security Bulkhead Gate System (Continuous wall integration)
   const gateRoot = new THREE.Group();
   gateRoot.name = 'Security_Bulkhead_Gate_System';
 
-  // Surrounding concrete archway piers connecting to adjacent walls
-  const pierL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.5, 3.2), concreteMat);
-  pierL.position.set(-2.4, 2.75, 0);
-  const pierR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 6.5, 3.2), concreteMat);
-  pierR.position.set(2.4, 2.75, 0);
+  // Surrounding concrete archway piers (anchored firmly to floor & ceiling)
+  const pierL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5.5, 2.8), concreteMat);
+  pierL.position.set(-1.8, 2.25, 0);
+  const pierR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 5.5, 2.8), concreteMat);
+  pierR.position.set(1.8, 2.25, 0);
 
-  // Heavy steel overhead lintel with hydraulic housing
-  const lintel = new THREE.Mesh(new THREE.BoxGeometry(6.0, 1.4, 3.4), steelMat);
-  lintel.position.set(0, 5.5, 0);
+  // Mechanical Guide Rails running vertically along inner piers
+  const railL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 5.5, 0.3), frameSteel);
+  railL.position.set(-1.3, 2.25, 0);
+  const railR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 5.5, 0.3), frameSteel);
+  railR.position.set(1.3, 2.25, 0);
+
+  // Heavy steel overhead lintel & hydraulic housing
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.2, 3.0), frameSteel);
+  lintel.position.set(0, 4.6, 0);
 
   // Twin Hydraulic Actuator Cylinders
-  const cylL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8), darkAlloy);
-  cylL.position.set(-1.4, 4.6, 1.2);
-  const cylR = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 2.2, 8), darkAlloy);
-  cylR.position.set(1.4, 4.6, 1.2);
+  const cylL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 8), frameSteel);
+  cylL.position.set(-1.1, 4.1, 0.6);
+  const cylR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8, 8), frameSteel);
+  cylR.position.set(1.1, 4.1, 0.6);
 
-  // Sliding Bulkhead Door Slab (Kinematic moving element)
-  const doorSlab = new THREE.Mesh(new THREE.BoxGeometry(3.6, 5.0, 1.6), darkAlloy);
-  doorSlab.name = 'Sliding_Slab';
-  doorSlab.position.set(0, 2.5, 0);
+  // Complete Visible Solid Sliding Blast Door Panel (occupies doorway when closed)
+  const slidingSlab = new THREE.Group();
+  slidingSlab.name = 'Sliding_Slab';
+  slidingSlab.position.set(0, 1.8, 0);
 
-  // Chevron safety warning trims
-  const lockBar = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.22, 1.8), cyanEmissive);
-  lockBar.position.set(0, 0.2, 0);
-  doorSlab.add(lockBar);
+  // Thick armored slab mesh
+  const slabBody = new THREE.Mesh(new THREE.BoxGeometry(2.4, 3.8, 1.2), doorPanelSteel);
+  slidingSlab.add(slabBody);
 
-  const statusLight = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.1, 16), amberEmissive);
-  statusLight.rotation.x = Math.PI / 2;
-  statusLight.position.set(0, 1.8, 0.85);
-  doorSlab.add(statusLight);
+  // Heavy horizontal reinforcing armor bars (3 prominent bands)
+  for (let b = -1.2; b <= 1.2; b += 1.2) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(2.44, 0.28, 1.3), frameSteel);
+    rib.position.y = b;
+    slidingSlab.add(rib);
+  }
 
-  gateRoot.add(pierL, pierR, lintel, cylL, cylR, doorSlab);
+  // Cyan magnetic seal line
+  const sealBar = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.14, 1.34), cyanEmissive);
+  sealBar.position.set(0, 0, 0);
+  slidingSlab.add(sealBar);
+
+  // Amber hydraulic status beacon
+  const beacon = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 16), amberEmissive);
+  beacon.rotation.x = Math.PI / 2;
+  beacon.position.set(0, 1.3, 0.62);
+  slidingSlab.add(beacon);
+
+  gateRoot.add(pierL, pierR, railL, railR, lintel, cylL, cylR, slidingSlab);
   exportToGLB(gateRoot, path.join(projectRoot, 'public/assets/machinery/door_bulkhead.glb'));
 
-  // Terminal Console
+  // Terminal Console (mounted neatly beside gate, human interaction height)
   const consoleRoot = new THREE.Group();
   consoleRoot.name = 'Research_Terminal_Console';
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, 1.2, 8), steelMat);
-  base.position.y = 0.6;
-  const head = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.45, 0.6), darkAlloy);
-  head.position.set(0, 1.3, 0.15);
-  head.rotation.x = -Math.PI / 6;
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.32), cyanEmissive);
-  screen.position.set(0, 0.05, 0.31);
+  const bracket = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.2), frameSteel);
+  bracket.position.set(0, 0.9, -0.2);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.42, 0.35), doorPanelSteel);
+  head.position.set(0, 1.15, 0.05);
+  head.rotation.x = -Math.PI / 8;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.28), cyanEmissive);
+  screen.position.set(0, 0.05, 0.18);
   head.add(screen);
-  consoleRoot.add(base, head);
+  consoleRoot.add(bracket, head);
   exportToGLB(consoleRoot, path.join(projectRoot, 'public/assets/props/terminal_console.glb'));
 }
 

@@ -99,17 +99,16 @@ export class MainGameScene extends Phaser.Scene {
   private setupKeyboardShortcuts(): void {
     if (!this.input.keyboard) return;
 
-    this.input.keyboard.on('keydown-R', () => {
-      this.toggleRecording();
-    });
-
-    this.input.keyboard.on('keydown-E', () => {
-      this.triggerReplayEcho();
-    });
-
-    this.input.keyboard.on('keydown-F11', (event: KeyboardEvent) => {
-      event.preventDefault();
-      platform.toggleFullscreen();
+    this.input.keyboard.on('keydown', (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (key === 'r') {
+        this.toggleRecording();
+      } else if (key === 'e') {
+        this.triggerReplayEcho();
+      } else if (event.key === 'F11') {
+        event.preventDefault();
+        platform.toggleFullscreen();
+      }
     });
   }
 
@@ -545,6 +544,7 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   public toggleRecording(): void {
+    if (!this.recordingSystem || !this.currentLevelConfig) return;
     if (this.recordingSystem.getIsRecording()) {
       const samples = this.recordingSystem.stopRecording();
       if (samples.length > 0) {
@@ -558,7 +558,8 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   public triggerReplayEcho(): void {
-    if (this.recordingSystem.getIsRecording()) {
+    if (!this.echoSystem) return;
+    if (this.recordingSystem && this.recordingSystem.getIsRecording()) {
       const samples = this.recordingSystem.stopRecording();
       if (samples.length > 0) {
         this.echoSystem.storeRecordedTrack(samples);
@@ -731,9 +732,7 @@ export class MainGameScene extends Phaser.Scene {
 
   public destroyScene(): void {
     if (this.input && this.input.keyboard) {
-      this.input.keyboard.off('keydown-R');
-      this.input.keyboard.off('keydown-E');
-      this.input.keyboard.off('keydown-F11');
+      this.input.keyboard.off('keydown');
     }
     this.scale.off('resize', this.updateCameraZoom, this);
     this.unsubscribers.forEach(u => u());

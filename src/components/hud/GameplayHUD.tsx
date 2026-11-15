@@ -1,20 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Play, 
-  RotateCcw, 
   HelpCircle, 
-  Zap, 
   Volume2, 
   VolumeX, 
   BookOpen, 
   Trophy, 
   BarChart3, 
-  ArrowLeft
+  ArrowLeft,
+  Heart,
+  RotateCcw
 } from 'lucide-react';
 import { gameEvents, EVENTS } from '../../game/events/GameEventBus';
 import { LevelConfig } from '../../types';
 import { CAMPAIGN_LEVELS } from '../../data/levels';
+import { SarthiCompanion } from '../sarthi/SarthiCompanion';
+import { SarthiTutorialOverlay } from './SarthiTutorialOverlay';
+import { LiveTestOverlay } from './LiveTestOverlay';
+import { VirtualJoystick } from './VirtualJoystick';
+import { MobileActionButtons } from './MobileActionButtons';
+import { SarthiTutorialService, HighlightControl } from '../../services/sarthi/SarthiTutorialService';
+import { platform } from '../../platform/PlatformBridge';
 
 interface GameplayHUDProps {
   currentLevelId: number;
@@ -33,12 +39,13 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
 }) => {
   const [levelInfo, setLevelInfo] = useState<Partial<LevelConfig> | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordProgress, setRecordProgress] = useState(0);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [activeEchoCount, setActiveEchoCount] = useState(0);
+  const [lives, setLives] = useState(3);
   const [showHintModal, setShowHintModal] = useState(false);
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [tutorialHighlight, setTutorialHighlight] = useState<HighlightControl>('NONE');
+
+  const isSector0Tutorial = currentLevelId === 0;
 
   useEffect(() => {
     const config = CAMPAIGN_LEVELS.find(l => l.id === currentLevelId);
@@ -49,46 +56,36 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
     const unsubLevelLoaded = gameEvents.on(EVENTS.LEVEL_LOADED, (data) => {
       setLevelInfo(data as LevelConfig);
       setIsRecording(false);
-      setRecordProgress(0);
-      setActiveEchoCount(0);
     });
 
     const unsubRecStart = gameEvents.on(EVENTS.RECORDING_STARTED, () => {
       setIsRecording(true);
-      setRecordProgress(0);
     });
 
     const unsubRecStop = gameEvents.on(EVENTS.RECORDING_STOPPED, () => {
       setIsRecording(false);
-      setRecordProgress(0);
-      setRecordingSeconds(0);
     });
 
-    const unsubRecUpdate = gameEvents.on(EVENTS.RECORDING_UPDATE, (data) => {
-      const payload = data as { elapsedSeconds: number; maxSeconds: number; progress: number };
-      setRecordingSeconds(payload.elapsedSeconds);
-      setRecordProgress(payload.progress * 100);
+    const unsubLives = gameEvents.on(EVENTS.LIVES_UPDATED, (data) => {
+      const payload = data as { lives: number; maxLives: number };
+      setLives(payload.lives);
     });
 
-    const unsubEchoSpawn = gameEvents.on(EVENTS.ECHO_SPAWNED, (data) => {
-      const payload = data as { activeCount: number };
-      setActiveEchoCount(payload.activeCount);
-    });
-
-    const unsubEchoExpired = gameEvents.on(EVENTS.ECHO_EXPIRED, (data) => {
-      const payload = data as { remaining: number };
-      setActiveEchoCount(payload.remaining);
-    });
+    let unsubTutorial: (() => void) | null = null;
+    if (isSector0Tutorial) {
+      unsubTutorial = SarthiTutorialService.getInstance().subscribe((step) => {
+        setTutorialHighlight(step.highlightControl);
+      });
+    }
 
     return () => {
       unsubLevelLoaded();
       unsubRecStart();
       unsubRecStop();
-      unsubRecUpdate();
-      unsubEchoSpawn();
-      unsubEchoExpired();
+      unsubLives();
+      if (unsubTutorial) unsubTutorial();
     };
-  }, [currentLevelId]);
+  }, [currentLevelId, isSector0Tutorial]);
 
   const handleRecordToggle = () => {
     gameEvents.emit(EVENTS.TRIGGER_RECORD);
@@ -105,54 +102,79 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 z-20">
       {/* Top Bar Header */}
-      <header className="flex justify-between items-start">
+      <header className="flex justify-between items-start pt-[max(0.75rem,env(safe-area-inset-top))] px-[max(1rem,env(safe-area-inset-left))] pointer-events-none">
         {/* Left: Mission & Level Context */}
-        <div className="flex items-center space-x-3 pointer-events-auto">
+        <div className="flex items-center space-x-2.5 pointer-events-auto">
           <button 
             onClick={onReturnToMenu}
-            className="p-2 bg-facility-900/90 hover:bg-facility-700/80 border border-facility-700 text-facility-cyan rounded-lg transition shadow-lg backdrop-blur-sm"
+            className="p-2 bg-facility-900/90 hover:bg-facility-700/80 border border-facility-700 text-facility-cyan rounded-xl transition shadow-lg backdrop-blur-sm"
             title="Main Menu"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div className="bg-facility-900/90 border border-facility-700/80 px-4 py-2 rounded-xl backdrop-blur-md shadow-xl">
-            <div className="flex items-center space-x-2">
-              <span className="text-xs uppercase tracking-widest text-facility-cyan font-semibold">
-                {levelInfo?.actTitle || 'SECTOR OPERATIONS'}
+          <button
+            onClick={handleRestart}
+            className={`p-2 bg-facility-900/90 hover:bg-facility-700/80 border text-slate-300 rounded-xl transition shadow-lg backdrop-blur-sm ${
+              tutorialHighlight === 'RESTART'
+                ? 'border-amber-400 text-amber-300 ring-2 ring-amber-400 animate-pulse'
+                : 'border-facility-700'
+            }`}
+            title="Restart Sector"
+          >
+            <RotateCcw className="w-5 h-5" />
+          </button>
+
+          <div className="bg-facility-900/90 border border-facility-700/80 px-3.5 py-1.5 rounded-xl backdrop-blur-md shadow-xl flex items-center space-x-2.5">
+            <div>
+              <span className="text-[10px] uppercase tracking-widest text-facility-cyan font-bold block">
+                {levelInfo?.actTitle?.split('–')[0]?.trim() || 'SECTOR'} • LVL {currentLevelId}
               </span>
-              <span className="text-slate-500">•</span>
-              <span className="text-xs font-mono text-slate-400">
-                LEVEL 0{currentLevelId}
-              </span>
+              <h2 className="text-sm font-bold text-white tracking-wide leading-none mt-0.5">
+                {levelInfo?.title || 'Unknown Sector'}
+              </h2>
             </div>
-            <h2 className="text-lg font-bold text-white tracking-wide">
-              {levelInfo?.title || 'Unknown Sector'}
-            </h2>
+            
+            <div className="w-px h-5 bg-facility-700/80" />
+
+            {/* Life Resonance Modules */}
+            <div className="flex items-center space-x-1" title="Life Resonance Modules">
+              {[1, 2, 3].map((heartIndex) => (
+                <Heart
+                  key={heartIndex}
+                  className={`w-4 h-4 transition-all duration-300 ${
+                    heartIndex <= lives
+                      ? 'text-red-500 fill-red-500 filter drop-shadow-[0_0_5px_rgba(239,68,68,0.7)]'
+                      : 'text-slate-600 fill-slate-800/40 opacity-40'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right: Quick Navigation Hub */}
-        <div className="flex items-center space-x-2 pointer-events-auto">
+        {/* Right: Sleek Action Hub */}
+        <div className="flex items-center space-x-2 pointer-events-auto pr-[max(0.5rem,env(safe-area-inset-right))]">
           <button
             onClick={() => setShowHintModal(true)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-facility-900/90 hover:bg-facility-800 border border-amber-500/40 text-amber-400 rounded-lg text-sm font-semibold backdrop-blur-sm transition"
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-facility-900/90 hover:bg-facility-800 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-semibold backdrop-blur-sm transition shadow-lg"
           >
             <HelpCircle className="w-4 h-4" />
-            <span>Hint</span>
+            <span className="hidden sm:inline">Hint</span>
           </button>
 
           <button
             onClick={onOpenLearningHub}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-facility-900/90 hover:bg-facility-800 border border-facility-cyan/40 text-facility-cyan rounded-lg text-sm font-semibold backdrop-blur-sm transition"
+            className="flex items-center space-x-1.5 px-3 py-1.5 bg-facility-900/90 hover:bg-facility-800 border border-facility-cyan/40 text-facility-cyan rounded-xl text-xs font-semibold backdrop-blur-sm transition shadow-lg"
+            title="Sarthi Code Lab"
           >
             <BookOpen className="w-4 h-4" />
-            <span>Code Lab</span>
+            <span className="hidden sm:inline">Code Lab</span>
           </button>
 
           <button
             onClick={onOpenAchievements}
-            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-purple-500/40 text-purple-400 rounded-lg backdrop-blur-sm transition"
+            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-purple-500/40 text-purple-400 rounded-xl backdrop-blur-sm transition shadow-lg"
             title="Achievements"
           >
             <Trophy className="w-4 h-4" />
@@ -160,7 +182,7 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
 
           <button
             onClick={onOpenStats}
-            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-facility-700 text-slate-300 rounded-lg backdrop-blur-sm transition"
+            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-facility-700 text-slate-300 rounded-xl backdrop-blur-sm transition shadow-lg"
             title="Analytics"
           >
             <BarChart3 className="w-4 h-4" />
@@ -168,96 +190,87 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
 
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-facility-700 text-slate-300 rounded-lg backdrop-blur-sm transition"
+            className="p-2 bg-facility-900/90 hover:bg-facility-800 border border-facility-700 text-slate-300 rounded-xl backdrop-blur-sm transition shadow-lg"
+            title={isMuted ? "Unmute" : "Mute"}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
           </button>
         </div>
       </header>
 
-      {/* Middle Banner: Temporal Recording Status */}
-      <div className="flex flex-col items-center">
-        {isRecording && (
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.8, opacity: 0 }}
-            className="bg-red-950/80 border border-red-500 text-red-200 px-4 py-2 rounded-full flex items-center space-x-3 backdrop-blur-md glow-purple"
-          >
-            <span className="w-3 h-3 rounded-full bg-red-500 animate-ping" />
-            <span className="text-sm font-bold tracking-wider uppercase font-mono">
-              RECORDING TIMELINE ({recordingSeconds.toFixed(1)}s / {levelInfo?.maxRecordingDurationSeconds || 10}s)
-            </span>
-          </motion.div>
-        )}
+      {/* Sarthi Sector 0 Interactive Dialogue Overlay */}
+      {isSector0Tutorial && (
+        <SarthiTutorialOverlay onCompleteTutorial={onReturnToMenu} />
+      )}
 
-        {/* Recording Timeline Bar */}
-        {isRecording && (
-          <div className="w-64 h-1.5 bg-facility-900/80 rounded-full mt-2 overflow-hidden border border-red-500/50">
-            <motion.div 
-              className="h-full bg-gradient-to-r from-red-500 via-purple-500 to-facility-cyan"
-              style={{ width: `${recordProgress}%` }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Bar: Action Controls & Status Bar */}
-      <footer className="flex justify-between items-end">
-        {/* Left: Active Echo Counters */}
-        <div className="bg-facility-900/90 border border-facility-700/80 p-3 rounded-xl backdrop-blur-md shadow-xl flex items-center space-x-4 pointer-events-auto">
-          <div className="flex items-center space-x-2">
-            <Zap className={`w-5 h-5 ${activeEchoCount > 0 ? 'text-facility-purple animate-pulse' : 'text-slate-500'}`} />
-            <div>
-              <div className="text-[10px] uppercase font-mono tracking-wider text-slate-400">Temporal Clones</div>
-              <div className="text-sm font-bold font-mono text-facility-cyan">
-                {activeEchoCount} / {levelInfo?.maxActiveEchoes || 1} ACTIVE
-              </div>
+      {/* Bottom Bar: Action Controls */}
+      {platform.getCapabilities().hasTouch ? (
+        <footer className="flex justify-between items-end pb-1 px-1">
+          {/* Left: Mobile Virtual Joystick */}
+          <div className="pointer-events-auto">
+            <div className="touch-none select-none p-1 bg-black/20 rounded-3xl border border-cyan-500/15 backdrop-blur-sm shadow-lg">
+              <VirtualJoystick size={118} highlightControl={tutorialHighlight} />
             </div>
           </div>
-        </div>
 
-        {/* Center: Primary Playback Actions */}
-        <div className="flex items-center space-x-3 pointer-events-auto">
-          <button
-            onClick={handleRecordToggle}
-            className={`px-5 py-3 rounded-xl font-bold flex items-center space-x-2 border transition shadow-lg backdrop-blur-md ${
-              isRecording 
-                ? 'bg-red-600/90 border-red-400 text-white animate-pulse' 
-                : 'bg-facility-900/90 hover:bg-facility-800 border-facility-cyan/60 text-facility-cyan'
-            }`}
-          >
-            <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-white' : 'bg-red-500'}`} />
-            <span>{isRecording ? 'STOP [R]' : 'RECORD [R]'}</span>
-          </button>
-
-          <button
-            onClick={handleReplay}
-            className="px-6 py-3 bg-gradient-to-r from-facility-blue to-facility-purple hover:brightness-110 border border-facility-cyan/60 text-white rounded-xl font-bold flex items-center space-x-2 shadow-lg shadow-purple-900/30 transition"
-          >
-            <Play className="w-4 h-4 fill-current" />
-            <span>SUMMON ECHO [E]</span>
-          </button>
-
-          <button
-            onClick={handleRestart}
-            className="p-3 bg-facility-900/90 hover:bg-facility-800 border border-facility-700 text-slate-300 rounded-xl transition"
-            title="Reset Level"
-          >
-            <RotateCcw className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Right: Keyboard Control Reference */}
-        <div className="hidden md:flex bg-facility-900/80 border border-facility-700/60 p-2.5 rounded-xl backdrop-blur-sm text-xs text-slate-400 font-mono space-x-3">
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">A/D</kbd> Move</span>
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">Space</kbd> Jump</span>
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">F</kbd> Interact</span>
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">R</kbd> Record</span>
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-white border border-facility-700">E</kbd> Echo</span>
-          <span><kbd className="bg-facility-800 px-1.5 py-0.5 rounded text-[#D4A52C] border border-[#D4A52C]/40">F1</kbd> Physics</span>
-        </div>
-      </footer>
+          {/* Right: Mobile Action Buttons (Jump, Use, Rec, Echo) */}
+          <div className="pointer-events-auto">
+            <MobileActionButtons
+              isRecording={isRecording}
+              onToggleRecord={handleRecordToggle}
+              onSummonEcho={handleReplay}
+              highlightControl={tutorialHighlight}
+            />
+          </div>
+        </footer>
+      ) : (
+        <footer className="flex justify-center items-end pb-3 px-4 pointer-events-none">
+          <div className="flex items-center space-x-3 px-4 py-1.5 bg-facility-950/80 border border-facility-700/60 rounded-full text-xs font-mono text-slate-300 backdrop-blur-md shadow-xl">
+            <span className="flex items-center space-x-1.5">
+              <kbd className="px-1.5 py-0.5 bg-facility-800 rounded border border-slate-600 text-cyan-400 font-bold">A</kbd>
+              <kbd className="px-1.5 py-0.5 bg-facility-800 rounded border border-slate-600 text-cyan-400 font-bold">D</kbd>
+              <span className="text-slate-400">Move</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="flex items-center space-x-1.5">
+              <kbd className="px-2 py-0.5 bg-facility-800 rounded border border-slate-600 text-cyan-400 font-bold">SPACE</kbd>
+              <span className="text-slate-400">Jump</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="flex items-center space-x-1.5">
+              <kbd className={`px-1.5 py-0.5 bg-facility-800 rounded border font-bold ${
+                isRecording 
+                  ? 'border-red-500 text-red-400 animate-pulse' 
+                  : tutorialHighlight === 'RECORD' 
+                  ? 'border-amber-400 text-amber-300 animate-pulse' 
+                  : 'border-slate-600 text-cyan-400'
+              }`}>R</kbd>
+              <span className={isRecording ? 'text-red-400 font-semibold' : 'text-slate-400'}>
+                {isRecording ? 'Recording...' : 'Record'}
+              </span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="flex items-center space-x-1.5">
+              <kbd className={`px-1.5 py-0.5 bg-facility-800 rounded border font-bold ${
+                tutorialHighlight === 'ECHO'
+                  ? 'border-cyan-400 text-cyan-300 animate-pulse'
+                  : 'border-slate-600 text-purple-400'
+              }`}>E</kbd>
+              <span className="text-slate-400">Echo Clone</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="flex items-center space-x-1.5">
+              <kbd className="px-1.5 py-0.5 bg-facility-800 rounded border border-slate-600 text-cyan-400 font-bold">F</kbd>
+              <span className="text-slate-400">Interact</span>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="flex items-center space-x-1.5">
+              <kbd className="px-1.5 py-0.5 bg-facility-800 rounded border border-slate-600 text-slate-300 font-bold">F11</kbd>
+              <span className="text-slate-400">Fullscreen</span>
+            </span>
+          </div>
+        </footer>
+      )}
 
       {/* Hints Modal */}
       <AnimatePresence>
@@ -313,6 +326,12 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Permanent AI Wolf Companion — SARTHI (For levels > 0) */}
+      {!isSector0Tutorial && <SarthiCompanion currentLevelId={currentLevelId} />}
+
+      {/* Live Testing Telemetry Overlay */}
+      <LiveTestOverlay />
     </div>
   );
 };

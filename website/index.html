@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AFTERIMAGE: THE LAST ECHO — Official Game Site & APK Download</title>
+  <meta name="description" content="Official website for AFTERIMAGE: THE LAST ECHO. A cinematic 2.5D temporal puzzle-platformer created by SMP. Download the verified production APK.">
+  <link rel="icon" type="image/png" href="assets/branding/app-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(13, 19, 32, 0.85);
+      --card-border: rgba(56, 217, 255, 0.25);
+      --cyan: #38d9ff;
+      --cyan-glow: rgba(56, 217, 255, 0.4);
+      --gold: #d4a52c;
+      --gold-glow: rgba(212, 165, 44, 0.35);
+      --purple: #9875ff;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .font-heading { font-family: 'Rajdhani', sans-serif; }
+    
+    /* Header Navigation */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 9, 14, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(56, 217, 255, 0.15);
+      padding: 1rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      border: 1px solid var(--gold);
+      background: #090a0d;
+      padding: 2px;
+      object-fit: contain;
+    }
+    .brand-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: 0.15em;
+      color: #fff;
+      text-transform: uppercase;
+    }
+    .brand-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--gold);
+      letter-spacing: 0.2em;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 1.5rem;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--cyan); }
+    .nav-btn {
+      background: linear-gradient(135deg, #1e3a8a, #0284c7);
+      color: #fff !important;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* Hero Section */
+    .hero {
+      position: relative;
+      padding: 4rem 1.5rem;
+      text-align: center;
+      background: radial-gradient(circle at 50% 30%, rgba(56, 217, 255, 0.12), transparent 70%),
+                  radial-gradient(circle at 80% 80%, rgba(152, 117, 255, 0.1), transparent 60%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      background: rgba(212, 165, 44, 0.15);
+      border: 1px solid var(--gold);
+      border-radius: 9999px;
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      margin-bottom: 1.5rem;
+    }
+    .hero-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: linear-gradient(180deg, #ffffff 0%, #cbd5e1 50%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+    .hero-subtitle {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: clamp(1.2rem, 3vw, 1.8rem);
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+    .hero-desc {
+      max-width: 720px;
+      margin: 0 auto 2.5rem auto;
+      font-size: 1.05rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #0284c7, var(--cyan));
+      color: #040810;
+      font-weight: 800;
+      font-size: 1rem;
+      border-radius: 12px;
+      text-decoration: none;
+      box-shadow: 0 0 25px var(--cyan-glow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 35px var(--cyan-glow);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 1rem 1.8rem;
+      background: rgba(13, 19, 32, 0.8);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      border-radius: 12px;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: var(--cyan);
+    }
+    .hero-cover {
+      max-width: 960px;
+      margin: 0 auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 217, 255, 0.2);
+    }
+    .hero-cover img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* Verification Badge Callout */
+    .verify-box {
+      background: rgba(10, 16, 28, 0.9);
+      border: 1px solid rgba(212, 165, 44, 0.4);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin: 2.5rem 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .verify-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .verify-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 0.25rem;
+    }
+    .verify-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #fff;
+      word-break: break-all;
+    }
+
+    /* Section Styles */
+    section {
+      padding: 4rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .section-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+    .section-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 2.25rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    /* Grid Cards */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--cyan);
+    }
+    .card-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+    .card-text {
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* Level Table */
+    .level-table-wrap {
+      overflow-x: auto;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+    th {
+      background: rgba(14, 23, 42, 0.9);
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--cyan);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      border-bottom: 1px solid rgba(56, 217, 255, 0.2);
+    }
+    td {
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text);
+    }
+    tr:hover td {
+      background: rgba(56, 217, 255, 0.04);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .badge-act0 { background: rgba(212, 165, 44, 0.2); color: var(--gold); border: 1px solid var(--gold); }
+    .badge-act1 { background: rgba(56, 217, 255, 0.2); color: var(--cyan); }
+    .badge-act2 { background: rgba(152, 117, 255, 0.2); color: var(--purple); }
+    .badge-act3 { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .badge-act4 { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    .badge-act5 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    /* Screenshots gallery */
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .screenshot-card {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: #000;
+    }
+    .screenshot-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+    .screenshot-card:hover img {
+      transform: scale(1.03);
+    }
+    .screenshot-caption {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted);
+      background: var(--card-bg);
+    }
+
+    /* Controls Section */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+    .control-item {
+      background: rgba(13, 19, 32, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .key-cap {
+      background: #1e293b;
+      border: 1px solid #475569;
+      box-shadow: 0 2px 0 #0f172a;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Footer */
+    footer {
+      background: #04060a;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--cyan); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <a href="#" class="brand-wrap">
+      <img src="assets/branding/smp-logo.png" alt="SMP Official" class="brand-logo">
+      <div>
+        <div class="brand-title">SMP ORIGINAL</div>
+        <div class="brand-sub">1% CHANCE. 99% FAITH.</div>
+      </div>
+    </a>
+    <nav>
+      <a href="#about">About</a>
+      <a href="#levels">15 Levels</a>
+      <a href="#controls">Controls</a>
+      <a href="#security">Security</a>
+      <a href="#download" class="nav-btn">Download APK</a>
+    </nav>
+  </header>
+
+  <!-- Hero Banner -->
+  <div class="hero">
+    <div class="hero-badge">OFFICIAL PRODUCTION RELEASE • v1.2.0</div>
+    <h1 class="hero-title">AFTERIMAGE</h1>
+    <div class="hero-subtitle">THE LAST ECHO</div>
+    <p class="hero-desc">
+      "Your past self becomes your greatest teammate." Step into an abandoned subterranean quantum facility. Record continuous temporal timelines, summon past echoes as physical co-op partners, and conquer 15 handcrafted puzzle-platforming sectors.
+    </p>
+
+    <div class="hero-actions">
+      <a href="downloads/AFTERIMAGE-release.apk" class="btn-primary" download="AFTERIMAGE-The-Last-Echo-release.apk">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        <span>DOWNLOAD PRODUCTION APK (36.1 MB)</span>
+      </a>
+      <a href="#levels" class="btn-secondary">
+        <span>EXPLORE ALL 15 SECTORS</span>
+      </a>
+    </div>
+
+    <!-- Master Cover Artwork -->
+    <div class="hero-cover">
+      <img src="assets/branding/game-cover.png" alt="AFTERIMAGE: The Last Echo Cover Artwork">
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Official Release Verification Panel -->
+    <div id="download" class="verify-box">
+      <div class="verify-item">
+        <span class="verify-label">Official Package ID</span>
+        <span class="verify-value">com.smp.afterimage</span>
+      </div>
+      <div class="verify-item">
+        <span class="verify-label">Release Version</span>
+        <span class="verify-value">v1.2.0 • 2.5D Edition</span>
+      </div>
+      <div class="verify-item">
+        <span class="verify-label">Exact APK File Size</span>
+        <span class="verify-value">37,883,867 bytes (36.13 MB)</span>
+      </div>
+      <div class="verify-item" style="grid-column: 1 / -1;">
+        <span class="verify-label">APK SHA-256 Digest (Exact Build Verified)</span>
+        <span class="verify-value" style="color: var(--cyan); font-weight: 700;">
+          9DF9D796F95E47CF8E2C4D393DA649E2B3AC590B7BADB42B43A70737A8EC65C9
+        </span>
+      </div>
+      <div class="verify-item" style="grid-column: 1 / -1;">
+        <span class="verify-label">Official Production Signer Certificate</span>
+        <span class="verify-value" style="color: var(--gold);">
+          CN=SMP Original, OU=Games, O=SMP Original, L=Mumbai, ST=Maharashtra, C=IN
+        </span>
+      </div>
+      <div class="verify-item" style="grid-column: 1 / -1;">
+        <span class="verify-label">Signer Certificate SHA-256 Fingerprint</span>
+        <span class="verify-value">
+          0d5e7f7541a0ecdc6115b4b6ec6b668aa287c978b1432fa7db135ccd32f86588
+        </span>
+      </div>
+    </div>
+
+    <!-- Core Features Section -->
+    <section id="about">
+      <div class="section-header">
+        <span class="section-tag">Cinematic Mechanics</span>
+        <h2 class="section-title">Why AFTERIMAGE Stands Apart</h2>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="color: var(--cyan);">Temporal Clones as Physical Objects</div>
+          <div class="card-text">
+            Echoes are not decorative ghosts. They hold magnetic pressure plates, activate timing switches, and serve as solid one-way stepping stones to reach soaring platforms.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--gold);">Sarthi Companion AI & Academy</div>
+          <div class="card-text">
+            Mandatory interactive training in Sector 0 observes your live inputs. Sarthi adapts from subtle environmental hints to tactical execution without ever spoiling solutions.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--purple);">100% Offline & Zero Ads</div>
+          <div class="card-text">
+            No telemetry trackers, no predatory in-app purchases, no network required. Pure, uninterrupted cerebral gameplay signed by SMP Original.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gameplay Screenshots Gallery -->
+    <section>
+      <div class="section-header">
+        <span class="section-tag">Visual Verification</span>
+        <h2 class="section-title">Actual Gameplay In Action</h2>
+      </div>
+      <div class="screenshots-grid">
+        <div class="screenshot-card">
+          <img src="assets/screenshots/gameplay-1.png" alt="16:9 Landscape Gameplay">
+          <div class="screenshot-caption">1280x720 • Desktop & Tablet Landscape View</div>
+        </div>
+        <div class="screenshot-card">
+          <img src="assets/screenshots/gameplay-2.png" alt="Mobile 19.5:9 Ultrawide Gameplay">
+          <div class="screenshot-caption">844x390 • Modern Mobile Phone Landscape</div>
+        </div>
+        <div class="screenshot-card">
+          <img src="assets/screenshots/gameplay-3.png" alt="Portrait Mobile Gameplay">
+          <div class="screenshot-caption">390x844 • Responsive Mobile Portrait View</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Complete 15 Levels & Academy Roadmap -->
+    <section id="levels">
+      <div class="section-header">
+        <span class="section-tag">Progression Map</span>
+        <h2 class="section-title">Complete 15-Sector Campaign</h2>
+      </div>
+      <div class="level-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Sector</th>
+              <th>Act Title</th>
+              <th>Sector Name</th>
+              <th>Core Temporal Challenge</th>
+              <th>Echoes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>00</strong></td>
+              <td><span class="badge badge-act0">PROLOGUE</span></td>
+              <td><strong>Temporal Qualification</strong></td>
+              <td>Mandatory Sarthi Academy training: Kinematics, jumping, switch interaction, and recording.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>01</strong></td>
+              <td><span class="badge badge-act1">ACT 1</span></td>
+              <td>First Signal</td>
+              <td>Awakening in Sector 01. Movement validation and vertical ledge awareness.</td>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td><strong>02</strong></td>
+              <td><span class="badge badge-act1">ACT 1</span></td>
+              <td>A Second Self</td>
+              <td>Magnetic pressure plates require continuous mass. Record an echo to hold the blast gate open.</td>
+              <td>1</td>
+            </tr>
+            <tr>
+              <td><strong>03</strong></td>
+              <td><span class="badge badge-act1">ACT 1</span></td>
+              <td>Echoes of the Past</td>
+              <td>Overgrown ruins. Leap onto your past self's shoulders as a solid stepping stone to scale the sheer cliff.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>04</strong></td>
+              <td><span class="badge badge-act2">ACT 2</span></td>
+              <td>Pressure & Release</td>
+              <td>Dual containment sector. Coordinate two distinct echo timelines across moving blast doors.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>05</strong></td>
+              <td><span class="badge badge-act2">ACT 2</span></td>
+              <td>Thermal Conduit</td>
+              <td>Superheated thermal vents. Leap across moving platforms and suppress steam conduits.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>06</strong></td>
+              <td><span class="badge badge-act2">ACT 2</span></td>
+              <td>Subterranean Relay</td>
+              <td>Sequential switch toggling across industrial chambers with laser containment.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>07</strong></td>
+              <td><span class="badge badge-act3">ACT 3</span></td>
+              <td>Quantum Rift</td>
+              <td>Time-decaying portals requiring precision leap coordination over lethal pits.</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><strong>08</strong></td>
+              <td><span class="badge badge-act3">ACT 3</span></td>
+              <td>Harmonic Chamber</td>
+              <td>Resonance harmonic puzzle: Echoes must touch switches at matching rhythmic intervals.</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><strong>09</strong></td>
+              <td><span class="badge badge-act3">ACT 3</span></td>
+              <td>The Last Echo</td>
+              <td>Core collapse sequence. Triple-echo coordination to stabilize the primary reactor.</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><strong>10</strong></td>
+              <td><span class="badge badge-act4">ACT 4</span></td>
+              <td>Dual Frequency</td>
+              <td>Out-of-phase laser barriers requiring timed recording between frequency pulses.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>11</strong></td>
+              <td><span class="badge badge-act4">ACT 4</span></td>
+              <td>Ascension Grid</td>
+              <td>Dual vertical ascension: Echoes scale eastern towers while protagonist ascends western shafts.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>12</strong></td>
+              <td><span class="badge badge-act4">ACT 4</span></td>
+              <td>Parallel Realities</td>
+              <td>Cross-chamber synchronization: Action in Sector A suppresses lethal fields in Sector B.</td>
+              <td>2</td>
+            </tr>
+            <tr>
+              <td><strong>13</strong></td>
+              <td><span class="badge badge-act5">ACT 5</span></td>
+              <td>Event Horizon</td>
+              <td>Multi-tier echo stacking: Three simultaneous chronological clones across gravity-warped pits.</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><strong>14</strong></td>
+              <td><span class="badge badge-act5">ACT 5</span></td>
+              <td>Chronos Overflow</td>
+              <td>Rapid timed purge relay: Three consecutive switches requiring overlapping temporal execution.</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><strong>15</strong></td>
+              <td><span class="badge badge-act5">ACT 5</span></td>
+              <td>Omega Singularity</td>
+              <td>Grand Master Synthesis: Triple plate pinning, timed relay switching, and apex gateway escape.</td>
+              <td>3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Controls Guide -->
+    <section id="controls">
+      <div class="section-header">
+        <span class="section-tag">Input Architecture</span>
+        <h2 class="section-title">Controls & Hotkeys</h2>
+      </div>
+      <div class="controls-grid">
+        <div class="control-item">
+          <div>
+            <strong>Move Left / Right</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Kinematic horizontal traversal</div>
+          </div>
+          <div><span class="key-cap">A</span> <span class="key-cap">D</span> or <span class="key-cap">←</span> <span class="key-cap">→</span></div>
+        </div>
+        <div class="control-item">
+          <div>
+            <strong>Jump</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Buffered vertical leap (200ms buffer)</div>
+          </div>
+          <div><span class="key-cap">Space</span> or <span class="key-cap">W</span></div>
+        </div>
+        <div class="control-item">
+          <div>
+            <strong>Record Timeline</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Start / Stop chronological recording</div>
+          </div>
+          <div><span class="key-cap">R</span></div>
+        </div>
+        <div class="control-item">
+          <div>
+            <strong>Summon Echo</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Deploy recorded clone into reality</div>
+          </div>
+          <div><span class="key-cap">E</span></div>
+        </div>
+        <div class="control-item">
+          <div>
+            <strong>Interact / Switch</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Toggle consoles and circuit breakers</div>
+          </div>
+          <div><span class="key-cap">F</span></div>
+        </div>
+        <div class="control-item">
+          <div>
+            <strong>Mobile Touch</strong>
+            <div style="font-size: 0.8rem; color: var(--muted);">Subtle analog stick & discrete touch buttons</div>
+          </div>
+          <div class="badge badge-act1">TOUCH UI</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Security & Privacy Section -->
+    <section id="security">
+      <div class="section-header">
+        <span class="section-tag">Player Trust</span>
+        <h2 class="section-title">Security & Privacy Standards</h2>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-title" style="color: var(--cyan);">Permanent Production Keystore</div>
+          <div class="card-text">
+            Signed with the official permanent SMP Original RSA 2048-bit certificate using APK Signature Scheme v2. Guaranteed authentic identity and seamless future updates.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--gold);">Strict Sandbox Isolation</div>
+          <div class="card-text">
+            Zero cleartext network traffic permitted (<code class="font-mono">usesCleartextTraffic="false"</code>). Web assets run purely through the local encrypted <code class="font-mono">capacitor://localhost</code> protocol.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color: var(--purple);">No Data Collection</div>
+          <div class="card-text">
+            Game saves, achievements, and high scores reside solely on your physical device. No telemetry, no third-party SDKs, and zero tracking cookies.
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div style="margin-bottom: 1rem;">
+      <strong style="color: #fff; font-family: 'Rajdhani', sans-serif; font-size: 1.1rem; letter-spacing: 0.1em;">
+        AFTERIMAGE: THE LAST ECHO
+      </strong>
+      <div style="color: var(--gold); font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; margin-top: 0.25rem;">
+        AN SMP ORIGINAL • "1% CHANCE. 99% FAITH."
+      </div>
+    </div>
+    <p>© 2026 SMP Original. All rights reserved. Created with perseverance, intellect, and precision.</p>
+  </footer>
+
+</body>
+</html>
+

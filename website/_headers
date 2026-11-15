@@ -1,0 +1,12 @@
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+
+/downloads/AFTERIMAGE-release.apk
+  Content-Disposition: attachment; filename="AFTERIMAGE-The-Last-Echo-release.apk"
+  Content-Type: application/vnd.android.package-archive
+  Cache-Control: public, max-age=86400
+
+/assets/*
+  Cache-Control: public, max-age=604800, immutable

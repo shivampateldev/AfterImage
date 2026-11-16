@@ -410,6 +410,70 @@
       color: var(--muted);
     }
     footer a { color: var(--cyan); text-decoration: none; }
+
+    /* Compatibility Toast Banner */
+    .compat-banner {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      z-index: 1000;
+      max-width: 90%;
+      width: 520px;
+      padding: 1.1rem 1.4rem;
+      background: rgba(11, 19, 36, 0.95);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 25px var(--cyan-glow);
+      border-radius: 14px;
+      backdrop-filter: blur(16px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .compat-banner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .compat-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+    .compat-banner-icon {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(56, 217, 255, 0.15);
+      color: var(--cyan);
+    }
+    .compat-banner-text {
+      font-size: 0.9rem;
+      line-height: 1.4;
+      color: #f1f5f9;
+    }
+    .compat-banner-close {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+    .compat-banner-close:hover {
+      color: #fff;
+    }
   </style>
 </head>
 <body>
@@ -428,8 +492,8 @@
       <a href="#levels">15 Levels</a>
       <a href="#controls">Controls</a>
       <a href="#security">Security</a>
-      <a href="/play/" class="nav-btn" target="_blank" style="margin-right: 0.5rem; background: linear-gradient(135deg, #0ea5e9, #38d9ff); color: #040810; font-weight: 800;">Play in Browser (PC)</a>
-      <a href="/downloads/AFTERIMAGE-release.apk" class="nav-btn" download="AFTERIMAGE-The-Last-Echo-release.apk">Download APK</a>
+      <a href="/play/" class="nav-btn play-windows-link" target="_blank" style="margin-right: 0.5rem; background: linear-gradient(135deg, #0ea5e9, #38d9ff); color: #040810; font-weight: 800;">Play in Browser (PC)</a>
+      <a href="/downloads/AFTERIMAGE-release.apk" class="nav-btn download-apk-link" download="AFTERIMAGE-The-Last-Echo-release.apk">Download APK</a>
     </nav>
   </header>
 
@@ -443,11 +507,11 @@
     </p>
 
     <div class="hero-actions">
-      <a href="/play/" class="btn-primary" target="_blank" style="background: linear-gradient(135deg, #0ea5e9, #38d9ff); box-shadow: 0 0 30px rgba(56, 217, 255, 0.45);">
+      <a href="/play/" class="btn-primary play-windows-link" target="_blank" style="background: linear-gradient(135deg, #0ea5e9, #38d9ff); box-shadow: 0 0 30px rgba(56, 217, 255, 0.45);">
         <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
         <span>PLAY ON PC / WINDOWS (INSTANT FULLSCREEN)</span>
       </a>
-      <a href="/downloads/AFTERIMAGE-release.apk" class="btn-secondary" download="AFTERIMAGE-The-Last-Echo-release.apk">
+      <a href="/downloads/AFTERIMAGE-release.apk" class="btn-secondary download-apk-link" download="AFTERIMAGE-The-Last-Echo-release.apk">
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
         <span>DOWNLOAD ANDROID APK (36.1 MB)</span>
       </a>
@@ -740,6 +804,82 @@
     </div>
     <p>© 2026 SMP Original. All rights reserved. Created with perseverance, intellect, and precision.</p>
   </footer>
+
+  <!-- Compatibility Alert Toast Banner -->
+  <div id="compat-banner" class="compat-banner" role="alert" aria-live="assertive">
+    <div class="compat-banner-content">
+      <div class="compat-banner-icon" id="compat-banner-icon">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <div class="compat-banner-text" id="compat-banner-msg">
+        Kindly open the website in Windows to access this feature.
+      </div>
+    </div>
+    <button class="compat-banner-close" id="compat-banner-close" aria-label="Close message">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <script>
+    (function() {
+      var ua = (navigator.userAgent || '').toLowerCase();
+      var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+      
+      var isWindows = /windows|win32|win64/.test(ua) || /win/i.test(platform);
+      var isAndroid = /android/.test(ua);
+      var isMobile = /android|iphone|ipad|ipod|mobile|touch/.test(ua) || (navigator.maxTouchPoints > 1 && !isWindows);
+
+      var banner = document.getElementById('compat-banner');
+      var bannerMsg = document.getElementById('compat-banner-msg');
+      var bannerClose = document.getElementById('compat-banner-close');
+      var hideTimeout = null;
+
+      function showBanner(message) {
+        if (!banner || !bannerMsg) return;
+        bannerMsg.textContent = message;
+        banner.classList.add('show');
+        if (hideTimeout) clearTimeout(hideTimeout);
+        hideTimeout = setTimeout(function() {
+          banner.classList.remove('show');
+        }, 6000);
+      }
+
+      if (bannerClose) {
+        bannerClose.addEventListener('click', function() {
+          if (banner) banner.classList.remove('show');
+        });
+      }
+
+      // 1. Check if user was redirected from /play/
+      var urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('notice') === 'windows_required') {
+        showBanner('Kindly open the website in Windows to access the browser gameplay feature.');
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // 2. Play in Browser links (Only allowed on PC / Windows)
+      var playLinks = document.querySelectorAll('.play-windows-link');
+      playLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          if (!isWindows || isMobile) {
+            e.preventDefault();
+            showBanner('Kindly open the website in Windows to access this feature.');
+          }
+        });
+      });
+
+      // 3. Android APK download links (Only allowed on Android devices)
+      var apkLinks = document.querySelectorAll('.download-apk-link');
+      apkLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+          if (!isAndroid) {
+            e.preventDefault();
+            showBanner('Kindly open the website in an Android device to download and install the APK.');
+          }
+        });
+      });
+    })();
+  </script>
 
 </body>
 </html>

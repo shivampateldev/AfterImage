@@ -20,6 +20,18 @@
       onerror="this.media='all'"
     />
     <title>AFTERIMAGE – The Last Echo</title>
+    <script>
+      (function() {
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+        var isWindows = /windows|win32|win64/.test(ua) || /win/i.test(platform);
+        var isMobile = /android|iphone|ipad|ipod|mobile|touch/.test(ua) || (navigator.maxTouchPoints > 1 && !isWindows);
+
+        if (!isWindows || isMobile) {
+          window.location.replace('/?notice=windows_required');
+        }
+      })();
+    </script>
     <script type="module" crossorigin src="./assets/index-BoPlUj5j.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/animation-Cv9AJefM.js">
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-pTjZJno2.js">
